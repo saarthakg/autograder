@@ -1,0 +1,17 @@
+{
+  "name": "autograder",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "prepare": "effect-tsgo patch --typescript --no-oxlint",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@effect/tsgo": "0.64.1",
+    "typescript": "7.0.2"
+  }
+}

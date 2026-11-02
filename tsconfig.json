@@ -1,0 +1,6 @@
+{
+  // Root config so editors load the Effect language service; each workspace
+  // extends tsconfig.base.json and is typechecked on its own.
+  "extends": "./tsconfig.base.json",
+  "files": []
+}
