@@ -24,7 +24,9 @@ Status values:
   - It's the most task-involving option that still counts as "feedback off". Showing unmet criteria would effectively be hints.
   - Students need something affirming to keep going ("inspire the love of learning").
 - **Refs:** P8, §1.2
-- **Status:** Proposed. Also **asking Alp** whether "feedback off" allows met criteria.
+- **Status:** Accepted. Decided without Alp, using the reading above.
+  - The brief turns off *real-time feedback*, meaning tutoring-style hints. Labels for met criteria are task-framed affirmation, not hints.
+  - If Goblins reads it more strictly, `showCriteriaToStudents=false` gives score only. That's one setting, not a redesign.
 
 ### D-02 ★ One attempt per problem
 - **Context:** The brief doesn't say whether students can resubmit.
@@ -36,8 +38,9 @@ Status values:
 - **Why:**
   - This is grading, not practice. Resubmits plus a visible score would let students game the score toward the answer.
   - One attempt also caps model spend at one call per student per problem.
+  - It matches the brief's flow: "submit, see score, continue to the next".
 - **Refs:** P23, P8
-- **Status:** Proposed
+- **Status:** Accepted. Decided without Alp.
 
 ### D-03 Problem input format and points
 - **Context:** The brief doesn't say how problems are entered or how many points they're worth.
@@ -100,18 +103,21 @@ Status values:
 - **Refs:** P9, P5, P18
 - **Status:** Proposed
 
-### D-07 Budget: plan against $20, not $50
-- **Context:** The brief says the OpenRouter key has a $20 limit. The email mentions $50.
-- **Decision:** Plan against **$20** until Alp confirms. Spend plan:
-  - eval ≤ $1.20
-  - canary runs ≤ $0.25
-  - rubric generation and dev use ≤ $2
-  - the remainder is reserve for reviewers' demo grading
-
-  The budget guard refuses model-spending jobs once remaining key credit falls below `BUDGET_FLOOR_USD`, default $5.
-- **Why:** Planning against the smaller number is safe, and confirming it costs one email line.
+### D-07 Budget: the key's limit is $50, verified, not assumed
+- **Context:** The brief says $20, and the email with the key says $50.
+- **Decision:**
+  - Resolved from data: OpenRouter `GET /api/v1/key` reports `limit = 50`, `limit_remaining = 50`, `usage = 0`, `limit_reset = null`. It's a one-time $50, not monthly.
+  - Spend plan:
+    - eval ≤ $1.20
+    - canaries ≤ $0.25
+    - rubric generation and dev use ≤ $3
+    - everything else (about $45) is reserve for reviewers' live demo grading
+  - At about $0.0005 per grade, $45 covers roughly 90,000 cheap-model grades.
+  - The budget guard refuses model-spending jobs below `BUDGET_FLOOR_USD`, default $5, and reads `limit_remaining` live.
+  - Any single eval or canary run projected above $2 still needs Saarthak's approval.
+- **Why:** Read the number from the source of truth instead of guessing between two documents.
 - **Refs:** P25, P27
-- **Status:** Asked Alp
+- **Status:** Accepted (verified 2026-11-02)
 
 ### D-08 Rubric generated synchronously when a problem is saved
 - **Decision:**
