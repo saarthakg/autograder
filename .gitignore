@@ -1,0 +1,35 @@
+# Private working files (G6): brief, agent principles, agent memory
+.context/
+CLAUDE.md
+
+# Secrets (P27): only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Local reference clones (Effect source for API lookups)
+.repos/
+
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# Load-test run data: reports are regenerated per run; only curated
+# reports that LOADTEST.md links to are committed (force-add those).
+loadtest/reports/*
+!loadtest/reports/.gitkeep
+loadtest/.runs/
+
+# Eval scratch output; curated results live in evals/results/
+evals/.cache/
+
+# Tooling noise
+.DS_Store
+*.log
+coverage/
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
