@@ -172,6 +172,9 @@ Status values:
   - Retries use jittered exponential backoff and honor `Retry-After`. After capped attempts the submission goes to `needs_review`.
   - Idempotency is enforced by a unique `idempotency_key` and a unique `grading_job.submission_id`.
   - Workers run in the same image, behind `ROLE`.
+  - **Provider concurrency is a global budget.** Cloud Run runs several instances (D-20), so a per-process `Semaphore` alone would let N instances × K calls overrun the provider. The claim query also checks the number of unexpired leases against `MODEL_MAX_IN_FLIGHT`. Each process keeps a local `Semaphore` as well.
+    - Concurrent claims can overshoot the global cap by at most one job per instance.
+    - If the load test shows that matters, the claim takes a transaction-scoped advisory lock (`pg_advisory_xact_lock`) to make the cap exact.
 - **Why:**
   - The student never waits (P8).
   - A spike shows up as queue depth, not as errors (P24).
@@ -253,20 +256,39 @@ Status values:
 
 ## Infra and load testing
 
-### D-20 ★ Hosting: Fly.io (same image, two apps) plus Neon branches
+### D-20 ★ Hosting: $0, using Google Cloud Run (Free Trial) and Neon Free
+- **Context:** Saarthak asked for free hosting wherever possible, and asked about Vercel specifically. Every candidate was checked against its vendor docs on 2026-11-02.
 - **Decision:**
-  - Fly.io `shared-cpu-1x` machines:
-    - prod: 512 MB, always on, $3.69/mo
-    - loadtest: 1 GB, stopped between runs
-    - fake-llm: 256 MB, stopped between runs
-  - Neon Free Postgres with a `main` branch for prod and a `loadtest` branch, AWS us-east-1, co-located with Fly `iad`.
-  - Expected spend is about $6–12/mo; ask Goblins for ≤ $15/mo. Neon Launch (pay-as-you-go, about $5–20) is the fallback if the free 100 CU-hours run out.
+  - **Compute:** Google Cloud Run on a GCP **Free Trial** billing account. It has $300 of credit for 90 days, and Google's FAQ says you are not charged unless you manually upgrade.
+  - **Region:** `us-east4`.
+  - **Services**, all running the same container image except fake-llm:
+    | Service | Config | Purpose |
+    |---|---|---|
+    | `autograder` | prod, instance-based billing (CPU always allocated so worker fibers run), min 1 / max 3 instances, 1 vCPU / 512 MiB. About $50 a month of credit. | No cold starts for reviewers. |
+    | `autograder-loadtest` | Same image. `MODEL_BASE_URL` points at fake-llm and it uses the Neon `loadtest` branch. Min 0; the load-test runner raises the minimum during a run and resets it afterwards. | Load testing (P28). |
+    | `fake-llm` | Request-based billing, high per-instance concurrency. It mostly sleeps. | Simulated model provider. |
+  - **Database:** Neon Free. No card. A `main` branch for prod and a `loadtest` branch, in AWS us-east-1, a few milliseconds from `us-east4`.
+  - **Supporting services:**
+    - Artifact Registry for images.
+    - Secret Manager for the OpenRouter key and database URLs.
+    - A budget alert. It only alerts, because the trial already can't charge.
 - **Options rejected:**
-  - Render and Koyeb free tiers: they sleep, with about 1-min cold starts. That makes load-test results meaningless (P28).
-  - Railway trial: $5 for 30 days isn't enough for both environments.
-  - A single environment with a synthetic-tenant flag: it saves only about $1–4/mo and mixes load-test traffic into prod.
+  - **Vercel Hobby:**
+    - Load testing is allowed only on Enterprise plans, and the load test is the Part 2 deliverable.
+    - It can't run a long-lived worker. Cron runs at most daily, and Bun functions are in beta.
+    - Going over a limit pauses the project for 30 days.
+    - Its non-commercial-use wording is a grey area for this project.
+  - **Cloudflare Workers Free:** 10 ms CPU per request and 100k requests a day. One load-test run would use up the daily quota.
+  - **Render, Koyeb free:** 0.1 vCPU, sleep with about 1-minute cold starts, and Render suspends free services with high traffic.
+  - **Hugging Face Spaces:** Docker Spaces now need PRO.
+  - **Oracle Always Free VM:** ARM capacity is often out of stock, VMs idle for 7 days get reclaimed, and the load test would share a box with prod.
+  - **Fly.io:** no free tier, so it would cost about $6–12 a month.
+- **Consequences:**
+  - Prod scales **horizontally**: Cloud Run adds instances under load. That makes provider concurrency a *global* budget, which D-12 now enforces in Postgres.
+  - Resources stop when the trial ends, about 90 days out. That covers the review period. Moving afterwards is a config change (same container): Fly, or a Cloud Run account that bills.
+  - Loads here are small, at most about 20 submits/s and a few hundred requests/s. Google doesn't require pre-approval to test your own services within its Acceptable Use Policy (secondary sources; no official page found).
 - **Refs:** P27, P28
-- **Status:** Asked Alp (cost)
+- **Status:** Accepted (Saarthak chose Cloud Run, 2026-11-02)
 
 ### D-21 Load generator: custom Bun + Effect open model, not k6
 - **Decision:**

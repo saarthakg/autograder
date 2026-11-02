@@ -243,7 +243,9 @@ We pick the **cheapest model that clears every line**. If none does, the referen
 
 ## 8. Load-test plan (`loadtest/`, P28–P33)
 
-**Target:** the deployed `loadtest` environment. It runs the same image as prod, uses `MODEL_BASE_URL=fake-llm` and has its own Neon branch.
+**Target:** the deployed `autograder-loadtest` Cloud Run service. It runs the same image as prod, uses `MODEL_BASE_URL=fake-llm` and has its own Neon branch.
+
+**Instance scaling:** Cloud Run scales the service horizontally. Each report records the instance count over the run, and the breakpoint scenario runs once with `max-instances=1`, which isolates per-instance capacity, and once with autoscaling.
 
 **Generator:** a Bun + Effect script with an open arrival model (D-21).
 1. It precomputes a timeline:
@@ -320,19 +322,25 @@ export default {
 - In `spike`, about 3,000 first-problem submits land within about 3 minutes, roughly 17 submits/s and about 100 calls in flight.
 - Default `MODEL_CONCURRENCY` is 32 per worker, so `spike` is *meant* to build a queue. What we measure is how fast it drains (P24).
 
-## 9. Hosting (D-20). Needs Goblins to cover about $10–15/month
+## 9. Hosting (D-20): $0
 
-| Piece | Choice | Cost/month | Why |
+| Piece | Choice | Cost | Notes |
 |---|---|---|---|
-| prod app | Fly.io `shared-cpu-1x` 512 MB, always on (iad) | $3.69 | Always-on with no cold starts. Same image serves the API, web app and worker. |
-| loadtest app | Fly.io `shared-cpu-1x` 1 GB, **stopped between runs** | about $1–7 | Fly bills only while machines run. The runner starts and stops it. |
-| fake-llm | Fly.io `shared-cpu-1x` 256 MB, stopped between runs | about $0.50–2.19 | Separate service so the real HTTP client path is exercised (P29). |
-| Postgres | Neon Free: `main` branch (prod) plus a `loadtest` branch, AWS us-east-1 | $0 | Branches give the loadtest environment a separate database for free. Wake-up from autosuspend is sub-second, not 30 s. The pooler handles up to 10k clients. |
-| CI | GitHub Actions | $0 | Free tier. |
+| prod app | Cloud Run `autograder`, `us-east4`. Instance-based billing (CPU always allocated so the worker runs), min 1 / max 3 instances, 1 vCPU / 512 MiB | about $50/mo of trial credit, $0 billed | Always on, no cold starts. Serves the API, the web app and the worker. |
+| loadtest app | Cloud Run `autograder-loadtest`: same image, `MODEL_BASE_URL=fake-llm`, Neon `loadtest` branch. Min 0; the runner raises the minimum during a run | a few dollars of credit per month | Only config differs from prod (P28). |
+| fake-llm | Cloud Run `fake-llm`, request-based billing, high per-instance concurrency | pennies of credit | Mostly sleeping, which is cheap. |
+| Postgres | Neon Free: `main` (prod) and `loadtest` branches, AWS us-east-1 | $0, no card | 100 CU-hours a month, autoscales to 2 CU, sub-second wake from autosuspend, pooler handles 10k clients. Each run starts with a warm-up query. |
+| Images, secrets | Artifact Registry and Secret Manager | trial credit | |
+| CI | GitHub Actions | $0 | Deploys through Workload Identity Federation, so no long-lived key is stored. |
 
-**Caveats:**
-- Fly has **no free tier** and needs a card. That's the ask.
-- Neon Free gives 100 CU-hours per month. Prod at 0.25 CU with autosuspend fits, but heavy load testing at 1–2 CU could exhaust it. The fallback is Neon Launch, pay-as-you-go: about $0.106 per CU-hour, so roughly $5–20/month.
-- Render and Koyeb free tiers sleep, with cold starts of about 1 minute, which fails P28. Railway's $5 trial lasts 30 days.
+**Guarantees and limits:**
+- A GCP Free Trial billing account can't be charged unless someone manually upgrades it. Your card is only used to verify identity.
+- The $300 credit lasts 90 days. When it ends, resources stop, so the deployment covers the review window. Moving off is a config change to the same container.
+- A budget alert at $100 of credit used is there as a sanity check.
 
-**Total ask: Fly ≤ $15/month, plus Neon Launch ≤ $20/month only if needed.**
+**Setup you'll need to do (Phase 1):**
+1. Create a GCP project on a Free Trial billing account.
+2. Run `! gcloud auth login`.
+3. Create a Neon account (GitHub login, no card) and a project, and put its two connection strings in `.env`.
+
+I'll script everything else: enabling APIs, Artifact Registry, Secret Manager, the Cloud Run services and CI deploys.
