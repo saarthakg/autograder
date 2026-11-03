@@ -57,7 +57,8 @@ const flag = (name: string) => process.argv.includes(`--${name}`)
 
 const usd = (n: number) => `$${n.toFixed(n < 0.01 ? 5 : 3)}`
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`
-const ci = (i: { p: number; low: number; high: number }) => `${pct(i.p)} [${pct(i.low)}–${pct(i.high)}]`
+// A rate with no eligible cases is "n/a", not a misleading 0%.
+const ci = (i: { p: number; low: number; high: number; n: number }) => i.n === 0 ? "n/a" : `${pct(i.p)} [${pct(i.low)}–${pct(i.high)}]`
 
 /**
  * AppConfig for a DB-less script: only the model and prompt settings matter
@@ -205,12 +206,13 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
         latencyMs: mine.reduce((s, c) => s + c.latencyMs, 0)
       }
       if (result._tag === "Failure") {
-        return { ...base, outcome: result.failure._tag === "InvalidModelOutput" ? "invalid" as const : "error" as const }
+        return { ...base, outcome: result.failure._tag === "InvalidModelOutput" ? "invalid" as const : "error" as const, error: result.failure.message }
       }
       const r = result.success
-      if (!r.output.legible) return { ...base, outcome: "abstained" as const }
+      const read = { transcription: r.output.transcription, confidence: r.output.confidence, evidence: r.output.criteria.map((c) => `${c.id}: ${c.evidence}`) }
+      if (!r.output.legible) return { ...base, ...read, outcome: "abstained" as const }
       const problem = SAMPLE_PROBLEMS.find((p) => p.key === cases.find((c) => c.key === task.caseKey)!.problem)!
-      return { ...base, outcome: "graded" as const, total: r.totalPoints, met: problem.rubric.items.map((i) => r.met.get(i.id) === true) }
+      return { ...base, ...read, outcome: "graded" as const, total: r.totalPoints, met: problem.rubric.items.map((i) => r.met.get(i.id) === true) }
     })
 
   const perModel = models.map((model) => {

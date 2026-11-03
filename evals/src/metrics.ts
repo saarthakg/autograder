@@ -35,6 +35,11 @@ export interface Sample {
   readonly firstAttemptValid: boolean
   readonly costUsd: number
   readonly latencyMs: number
+  /** What the model read, for error analysis: most LLM grading errors are reading errors (§1.3). */
+  readonly transcription?: string | undefined
+  readonly evidence?: ReadonlyArray<string> | undefined
+  readonly confidence?: string | undefined
+  readonly error?: string | undefined
 }
 
 export interface Gold {
