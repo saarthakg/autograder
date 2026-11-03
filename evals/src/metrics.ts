@@ -33,7 +33,10 @@ export interface Sample {
   readonly total?: number | undefined
   /** True when the first model answer was already valid (no corrective retry). */
   readonly firstAttemptValid: boolean
+  /** At live list price from measured tokens: the basis for comparing models. */
   readonly costUsd: number
+  /** What OpenRouter actually billed (may be 0 during promotions). */
+  readonly billedUsd?: number | undefined
   readonly latencyMs: number
   /** What the model read, for error analysis: most LLM grading errors are reading errors (§1.3). */
   readonly transcription?: string | undefined
