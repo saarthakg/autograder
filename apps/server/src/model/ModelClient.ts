@@ -63,6 +63,41 @@ export class ModelClient extends Context.Service<ModelClient, {
   readonly complete: (request: ModelRequest) => Effect.Effect<ModelResponse, ModelError>
 }>()("autograder/ModelClient") {}
 
+export interface ModelInfo {
+  readonly id: string
+  readonly supportedParameters: ReadonlySet<string>
+  /** USD per token, from the live catalog (P17: never trust hard-coded prices). */
+  readonly promptPrice: number
+  readonly completionPrice: number
+  readonly acceptsImages: boolean
+}
+
+const Catalog = Schema.Struct({
+  data: Schema.Array(Schema.Struct({
+    id: Schema.String,
+    supported_parameters: Schema.optional(Schema.Array(Schema.String)),
+    pricing: Schema.optional(Schema.Struct({ prompt: Schema.optional(Schema.String), completion: Schema.optional(Schema.String) })),
+    architecture: Schema.optional(Schema.Struct({ input_modalities: Schema.optional(Schema.Array(Schema.String)) }))
+  }))
+})
+
+/** Fetches OpenRouter's public model catalog (no key needed). */
+export const fetchCatalog = (http: HttpClient.HttpClient, baseUrl: string) =>
+  http.execute(HttpClientRequest.get(`${baseUrl}/models`)).pipe(
+    Effect.flatMap((r) => r.json),
+    Effect.flatMap(Schema.decodeUnknownEffect(Catalog)),
+    Effect.map((c) =>
+      new Map<string, ModelInfo>(c.data.map((m) => [m.id, {
+        id: m.id,
+        supportedParameters: new Set(m.supported_parameters ?? []),
+        promptPrice: Number(m.pricing?.prompt ?? "0"),
+        completionPrice: Number(m.pricing?.completion ?? "0"),
+        acceptsImages: (m.architecture?.input_modalities ?? []).includes("image")
+      }]))
+    ),
+    Effect.timeout(Duration.seconds(15))
+  )
+
 const ChatResponse = Schema.Struct({
   choices: Schema.optional(Schema.Array(Schema.Struct({
     message: Schema.Struct({ content: Schema.NullOr(Schema.String) })
@@ -91,7 +126,13 @@ export const classifyStatus = (status: number): ModelErrorKind =>
   status === 408 || status >= 500 ? "provider_error" :
   "bad_request"
 
-export const buildBody = (request: ModelRequest) => {
+/**
+ * Optional knobs are sent only when the model supports them: with
+ * `require_parameters`, one unsupported parameter rules out every provider
+ * (P14: check supported_parameters, don't assume). Many current models are
+ * reasoning models that reject `temperature`.
+ */
+export const buildBody = (request: ModelRequest, supported: ReadonlySet<string> | undefined) => {
   const userContent: Array<object> = [{ type: "text", text: request.text }]
   if (request.imagePng !== undefined) {
     userContent.push({
@@ -107,7 +148,9 @@ export const buildBody = (request: ModelRequest) => {
   return {
     model: request.model,
     messages,
-    temperature: 0,
+    ...(supported?.has("temperature") ? { temperature: 0 } : {}),
+    // Grading is a judgment over a short transcription, not a hard proof: keep reasoning cheap.
+    ...(supported?.has("reasoning") ? { reasoning: { effort: "low" } } : {}),
     max_tokens: request.maxTokens,
     response_format: {
       type: "json_schema",
@@ -125,17 +168,26 @@ export const OpenRouterModelLive = Layer.effect(
   Effect.gen(function*() {
     const config = yield* AppConfig
     const http = yield* HttpClient.HttpClient
+    // Cached for an hour; if the catalog is unreachable we send only required parameters.
+    const catalog = yield* Effect.cachedWithTTL(
+      fetchCatalog(http, config.model.baseUrl).pipe(
+        Effect.tapError((e) => Effect.logWarning("model catalog unavailable; sending minimal parameters", e)),
+        Effect.orElseSucceed(() => new Map<string, ModelInfo>())
+      ),
+      Duration.hours(1)
+    )
 
     const complete = Effect.fn("ModelClient.complete")(function*(request: ModelRequest) {
       if (Option.isNone(config.model.apiKey)) {
         return yield* new ModelError({ kind: "not_configured", message: "OPENROUTER_API_KEY is not set" })
       }
+      const supported = (yield* catalog).get(request.model)?.supportedParameters
       const started = Date.now()
       const elapsed = () => Date.now() - started
       const httpRequest = HttpClientRequest.post(`${config.model.baseUrl}/chat/completions`).pipe(
         HttpClientRequest.bearerToken(Redacted.value(config.model.apiKey.value)),
         HttpClientRequest.setHeader("X-Title", "Goblins Auto-Grader"),
-        HttpClientRequest.bodyJsonUnsafe(buildBody(request))
+        HttpClientRequest.bodyJsonUnsafe(buildBody(request, supported))
       )
       const response = yield* http.execute(httpRequest).pipe(
         Effect.timeoutOrElse({

@@ -11,6 +11,11 @@ const fakeProvider = (status: number, body: unknown, headers: Record<string, str
     HttpClient.HttpClient,
     HttpClient.make((request) =>
       Effect.sync(() => {
+        if (request.url.endsWith("/models")) {
+          return HttpClientResponse.fromWeb(request, Response.json({
+            data: [{ id: "test/grader", supported_parameters: ["max_tokens", "response_format", "reasoning"] }]
+          }))
+        }
         const raw = request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : "{}"
         seen.push({ url: request.url, auth: request.headers["authorization"], body: JSON.parse(raw) })
         return HttpClientResponse.fromWeb(
@@ -53,6 +58,9 @@ describe("OpenRouter ModelClient", () => {
       expect(sent.auth).toBe("Bearer test-key")
       expect(sent.body.response_format).toMatchObject({ type: "json_schema", json_schema: { strict: true } })
       expect(sent.body.provider).toEqual({ require_parameters: true })
+      // Only parameters the catalog says the model supports (P14): no temperature here.
+      expect(sent.body.temperature).toBeUndefined()
+      expect(sent.body.reasoning).toEqual({ effort: "low" })
       expect(sent.body.messages[1].content[1].image_url.url).toMatch(/^data:image\/png;base64,/)
     }))
 
