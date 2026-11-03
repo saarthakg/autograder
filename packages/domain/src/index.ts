@@ -1,5 +1,6 @@
 export * from "./Api.ts"
 export * from "./Grading.ts"
+export * from "./Product.ts"
 export * from "./Sample.ts"
 export * from "./Strokes.ts"
 export * from "./Admin.ts"

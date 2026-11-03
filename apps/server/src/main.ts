@@ -14,6 +14,9 @@ import { ModelCallLedger } from "./model/Ledger.ts"
 import { OpenRouterModelLive } from "./model/ModelClient.ts"
 import { ApiHandlers } from "./http/Handlers.ts"
 import { AdminAuthLive } from "./http/AdminAuth.ts"
+import { StudentAuthLive, TeacherAuthLive } from "./http/ProductAuth.ts"
+import { Students } from "./product/Students.ts"
+import { Teachers } from "./product/Teachers.ts"
 import { Instance } from "./Instance.ts"
 import { CloudLogger } from "./Logging.ts"
 import { JobQueue } from "./queue/JobQueue.ts"
@@ -29,7 +32,10 @@ import { WorkerLive } from "./worker/Worker.ts"
 const App = Layer.unwrap(
   Effect.gen(function*() {
     const config = yield* AppConfig
-    const apiRoutes = HttpApiBuilder.layer(Api).pipe(Layer.provide(ApiHandlers), Layer.provide(AdminAuthLive))
+    const apiRoutes = HttpApiBuilder.layer(Api).pipe(
+      Layer.provide(ApiHandlers),
+      Layer.provide(Layer.mergeAll(AdminAuthLive, TeacherAuthLive, StudentAuthLive))
+    )
     const webRoutes = HttpStaticServer.layer({ root: config.webDist, spa: true })
     const http = HttpRouter.serve(Layer.mergeAll(apiRoutes, webRoutes)).pipe(
       Layer.provide(BunHttpServer.layer({ port: config.port, gracefulShutdownTimeout: Duration.seconds(5) }))
@@ -50,7 +56,8 @@ const ModelLive = Layer.mergeAll(OpenRouterModelLive, BudgetGuard.layer, ModelCa
   Layer.provide(FetchHttpClient.layer)
 )
 
-const Services = Layer.mergeAll(Submissions.layer, RubricGenerator.layer).pipe(
+const Services = Layer.mergeAll(Teachers.layer, Students.layer).pipe(
+  Layer.provideMerge(Layer.mergeAll(Submissions.layer, RubricGenerator.layer)),
   Layer.provideMerge(JobQueue.layer),
   Layer.provideMerge(ModelLive),
   Layer.provideMerge(Layer.mergeAll(DbLive, WakeSignal.layer, Instance.layer)),

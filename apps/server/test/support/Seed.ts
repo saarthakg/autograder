@@ -1,8 +1,9 @@
+import { Stroke } from "@autograder/domain"
 import { Effect } from "effect"
 import { SqlClient } from "effect/sql"
 
 export const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
-export const STROKES = [{ points: [[10, 10, 0.5, 0], [20, 20, 0.5, 16]] as [number, number, number, number][] }]
+export const STROKES = [new Stroke({ points: [[10, 10, 0.5, 0], [20, 20, 0.5, 16]] })]
 
 export const RUBRIC_ITEMS = [
   { id: "c1", label: "Distributes 3", description: "Writes 3x - 6", points: 1 },

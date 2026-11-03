@@ -1,39 +1,16 @@
-import { AdminAuth, Api, SubmitRequest } from "@autograder/domain"
-import { BunServices } from "@effect/platform-bun"
+import { Api, SubmitRequest } from "@autograder/domain"
 import { assert, layer } from "@effect/vitest"
-import { Effect, Layer } from "effect"
-import { HttpClientRequest, HttpServer } from "effect/http"
-import { HttpApiMiddleware, HttpApiTest } from "effect/http-api"
-import { ApiHandlers } from "../src/http/Handlers.ts"
-import { RubricGenerator } from "../src/grading/RubricGenerator.ts"
-import { Submissions } from "../src/grading/Submissions.ts"
-import { AdminAuthLive } from "../src/http/AdminAuth.ts"
-import { Instance } from "../src/Instance.ts"
-import { JobQueue } from "../src/queue/JobQueue.ts"
-import { WakeSignal } from "../src/worker/WakeSignal.ts"
-import { testConfig } from "./support/TestConfig.ts"
+import { Effect } from "effect"
+import { HttpApiTest } from "effect/http-api"
 import { PNG, resetDb, STROKES } from "./support/Seed.ts"
-import { TestDb, truncateJobs } from "./support/TestDb.ts"
+import { TestApp, withTokens } from "./support/TestApp.ts"
+import { truncateJobs } from "./support/TestDb.ts"
 
-const withToken = (token: string | undefined) =>
-  HttpApiMiddleware.layerClient(AdminAuth, ({ next, request }) =>
-    next(token === undefined ? request : HttpClientRequest.bearerToken(request, token)))
-
-const NoRubrics = Layer.succeed(RubricGenerator, RubricGenerator.of({ generate: () => Effect.die("not used") }))
-
-const Handlers = ApiHandlers.pipe(
-  Layer.provideMerge(AdminAuthLive),
-  Layer.provide(Layer.mergeAll(Submissions.layer, NoRubrics).pipe(
-    Layer.provideMerge(JobQueue.layer),
-    Layer.provideMerge(Layer.mergeAll(WakeSignal.layer, Instance.layer, BunServices.layer))
-  )),
-  Layer.provide(testConfig()),
-  Layer.provideMerge(TestDb)
-)
+const withToken = (admin: string | undefined) => withTokens(admin === undefined ? {} : { admin })
 
 const makeClient = HttpApiTest.groups(Api, ["system", "admin"])
 
-layer(Layer.mergeAll(Handlers, HttpServer.layerServices), { excludeTestServices: true })("HTTP API", (it) => {
+layer(TestApp, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("health answers without touching the database", () =>
     Effect.gen(function*() {
       const client = yield* makeClient
