@@ -7,6 +7,10 @@
  *   bun run eval --yes                 # run it (refuses above --max-usd, default $2)
  *   bun run eval --models a,b --reference c --k 3 --cases p1-standard,p2-standard
  *
+ * Touches NO database. The ledger is in memory, nothing here builds a SqlClient
+ * (the type system would demand one), and the DB URLs from .env are removed
+ * from this process's environment on startup so nothing can pick them up.
+ *
  * Writes evals/results/<run>/results.json (every call's latency and token usage,
  * to calibrate the load-test simulator) and summary.md.
  */
@@ -23,7 +27,12 @@ import { type ModelCallRecord, ModelCallLedger } from "../../apps/server/src/mod
 import { fetchCatalog, type ModelInfo, OpenRouterModelLive } from "../../apps/server/src/model/ModelClient.ts"
 import { computeMetrics, gates, type Gold, type Metrics, type Sample } from "./metrics.ts"
 
-const DEFAULT_CHEAP = ["openai/gpt-6-luna", "google/gemini-3.1-flash-lite", "qwen/qwen3-vl-30b-a3b-instruct"]
+const DEFAULT_CHEAP = [
+  "deepseek/deepseek-v4.1-flash", // cheapest end of the vision tier
+  "openai/gpt-6-luna",
+  "google/gemini-3.1-flash-lite",
+  "qwen/qwen3-vl-30b-a3b-instruct" // open weights: the self-hosting path at 1M students
+]
 const DEFAULT_REFERENCE = "openai/gpt-6.1-sol"
 
 // Conservative per-call token estimates for the projection. Actual usage is measured and reported.
@@ -32,6 +41,9 @@ const EST_IMAGE_TOKENS = 1_600 // a cropped ~1024px ink image; providers vary (t
 const EST_OUTPUT_TOKENS = 700 // transcription + verdicts + low-effort reasoning
 const RETRY_FACTOR = 1.25 // headroom for corrective retries
 const SAFETY_FACTOR = 1.5
+
+// Belt and braces: the eval must never reach the prod (or any) database.
+for (const key of Object.keys(process.env)) if (key.startsWith("DATABASE_URL")) delete process.env[key]
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 const FIXTURES = here("../fixtures")
@@ -95,8 +107,9 @@ interface Task {
 
 const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.gen(function*() {
   const cheap = (arg("models") ?? DEFAULT_CHEAP.join(",")).split(",").filter(Boolean)
+  // `--reference none` skips the reference model (used for the one-case smoke run).
   const reference = arg("reference") ?? DEFAULT_REFERENCE
-  const models = [...cheap, reference]
+  const models = reference === "none" ? cheap : [...cheap, reference]
   const k = Number(arg("k") ?? 3)
   const maxUsd = Number(arg("max-usd") ?? 2)
   const concurrency = Number(arg("concurrency") ?? 6)
@@ -106,7 +119,8 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
   // --- fixtures ---------------------------------------------------------------
   const missing = cases.filter((c) => !existsSync(`${FIXTURES}/${c.key}.png`))
   const ready = cases.filter((c) => existsSync(`${FIXTURES}/${c.key}.png`))
-  console.log(`\nFixtures: ${ready.length}/${cases.length} drawn in evals/fixtures/`)
+  console.log(`\nDatabase: none (in-memory ledger; DATABASE_URL* removed from env)`)
+  console.log(`Fixtures: ${ready.length}/${cases.length} drawn in evals/fixtures/`)
   if (missing.length > 0) console.log(`  missing: ${missing.map((c) => c.key).join(", ")}`)
   // With nothing drawn yet, still project the full set so the cost is known up front.
   const projectedCases = ready.length === 0 ? cases.length : ready.length
