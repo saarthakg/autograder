@@ -34,6 +34,12 @@ export interface EnqueueInput {
 
 export type RetryOutcome = "retrying" | "dead" | "lost"
 
+export interface SweepResult {
+  readonly requeued: number
+  /** Jobs that ran out of attempts; the worker runs their onDead hook. */
+  readonly buried: ReadonlyArray<JobRow>
+}
+
 const decodeRows = Schema.decodeUnknownEffect(Schema.Array(JobRow))
 const columns = `id, kind, payload, status, attempts, max_attempts AS "maxAttempts", run_id AS "runId",
   created_at AS "createdAt", claimed_at AS "claimedAt", finished_at AS "finishedAt", last_error AS "lastError"`
@@ -54,7 +60,7 @@ export class JobQueue extends Context.Service<JobQueue, {
     options?: { readonly permanent?: boolean }
   ) => Effect.Effect<RetryOutcome, SqlError.SqlError>
   /** Re-queues (or buries, if out of attempts) jobs whose worker died (P22). */
-  readonly sweepExpired: Effect.Effect<number, SqlError.SqlError>
+  readonly sweepExpired: Effect.Effect<SweepResult, SqlError.SqlError>
   /** Earliest moment something becomes actionable: a due retry or an expiring lease. */
   readonly nextDueAt: Effect.Effect<Option.Option<Date>, SqlError.SqlError>
   readonly get: (id: JobId) => Effect.Effect<Option.Option<JobRow>, SqlError.SqlError>
@@ -141,8 +147,15 @@ export class JobQueue extends Context.Service<JobQueue, {
            status = CASE WHEN attempts >= max_attempts THEN 'dead' ELSE 'queued' END,
            finished_at = CASE WHEN attempts >= max_attempts THEN now() END,
            run_after = now(), lease_until = NULL, last_error = 'lease expired (worker stopped mid-job)'
-         WHERE status = 'running' AND lease_until < now() RETURNING id`
-      ).pipe(Effect.map((r) => r.length), Effect.withSpan("JobQueue.sweepExpired"))
+         WHERE status = 'running' AND lease_until < now() RETURNING ${columns}`
+      ).pipe(
+        (effect) => rows(effect),
+        Effect.map((swept) => ({
+          requeued: swept.filter((j) => j.status === "queued").length,
+          buried: swept.filter((j) => j.status === "dead")
+        })),
+        Effect.withSpan("JobQueue.sweepExpired")
+      )
 
       const nextDueAt = sql.unsafe<{ at: Date | null }>(
         `SELECT LEAST(

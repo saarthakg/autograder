@@ -47,7 +47,7 @@ export const WorkerLive = Layer.effectDiscard(
           yield* queue.retryOrBury(job, `no handler for kind "${job.kind}"`, Duration.zero, { permanent: true })
           return
         }
-        const result = yield* Effect.exit(handler(job))
+        const result = yield* Effect.exit(handler.run(job))
         if (result._tag === "Success") {
           const completed = yield* queue.complete(job)
           if (!completed) yield* Effect.logWarning("job finished after its lease was lost; result discarded")
@@ -64,6 +64,7 @@ export const WorkerLive = Layer.effectDiscard(
           })
         const outcome = yield* queue.retryOrBury(job, message, delay, { permanent })
         yield* Effect.logWarning(`job failed: ${message}`).pipe(Effect.annotateLogs({ outcome, attempt: job.attempts }))
+        if (outcome === "dead" && handler.onDead) yield* handler.onDead(job, message)
       }).pipe(
         Effect.annotateLogs({ jobId: job.id, kind: job.kind }),
         // A DB error while recording the outcome leaves the lease to expire; the sweeper retries it.
@@ -73,8 +74,17 @@ export const WorkerLive = Layer.effectDiscard(
         Effect.ensuring(Semaphore.release(permits, 1))
       )
 
+    const sweep = Effect.gen(function*() {
+      const { buried } = yield* queue.sweepExpired
+      for (const job of buried) {
+        const onDead = handlers.get(job.kind)?.onDead
+        if (onDead) yield* onDead(job, job.lastError ?? "lease expired")
+      }
+      return buried.length
+    })
+
     const idleWait = Effect.gen(function*() {
-      yield* queue.sweepExpired
+      yield* sweep
       const next = yield* queue.nextDueAt
       const untilNext = Option.match(next, {
         onNone: () => config.worker.idlePoll,
@@ -105,8 +115,8 @@ export const WorkerLive = Layer.effectDiscard(
     )
 
     // Startup recovery: jobs left mid-flight by a previous instance.
-    const recovered = yield* queue.sweepExpired.pipe(Effect.orElseSucceed(() => 0))
-    yield* Effect.logInfo(`worker started (concurrency ${config.worker.concurrency}); recovered ${recovered} expired lease(s)`)
+    yield* sweep.pipe(Effect.catch((e) => Effect.logWarning("startup sweep failed; the idle loop retries it", e)))
+    yield* Effect.logInfo(`worker started (concurrency ${config.worker.concurrency})`)
     yield* Effect.forkScoped(loop)
 
     // Proof of life without traffic: the instance keeps CPU and the loop keeps running (D-20 A2).

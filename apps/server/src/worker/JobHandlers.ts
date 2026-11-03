@@ -1,4 +1,4 @@
-import { Context, Duration, Effect, Layer, Schema } from "effect"
+import { Context, Duration, Effect, Schema } from "effect"
 import type { JobRow } from "../queue/JobQueue.ts"
 
 /**
@@ -11,17 +11,18 @@ export class JobFailure extends Schema.TaggedError<JobFailure>()("JobFailure", {
   permanent: Schema.optional(Schema.Boolean)
 }) {}
 
-export type JobHandler = (job: JobRow) => Effect.Effect<void, JobFailure>
+export interface JobHandler {
+  readonly run: (job: JobRow) => Effect.Effect<void, JobFailure>
+  /** Runs once a job is buried (out of attempts, or swept after its last lease), e.g. to mark needs_review (P9). */
+  readonly onDead?: ((job: JobRow, lastError: string) => Effect.Effect<void>) | undefined
+}
 
-/** Registry of job kinds the worker knows how to run. Grading joins in Phase 2. */
+/** Registry of job kinds the worker knows how to run. */
 export class JobHandlers extends Context.Service<JobHandlers, ReadonlyMap<string, JobHandler>>()(
   "autograder/JobHandlers"
-) {
-  static readonly layer = Layer.succeed(
-    JobHandlers,
-    new Map<string, JobHandler>([
-      // Phase 1 smoke job: proves API -> queue -> woken worker -> done, deployed.
-      ["echo", (job) => Effect.logInfo("echo job ran").pipe(Effect.annotateLogs({ jobId: job.id }), Effect.delay(Duration.millis(20)))]
-    ])
-  )
+) {}
+
+/** Phase 1 smoke job: proves API -> queue -> worker -> done, deployed. */
+export const echoHandler: JobHandler = {
+  run: (job) => Effect.logInfo("echo job ran").pipe(Effect.annotateLogs({ jobId: job.id }), Effect.delay(Duration.millis(20)))
 }

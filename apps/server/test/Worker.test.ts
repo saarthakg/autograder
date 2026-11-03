@@ -8,7 +8,9 @@ import { WorkerLive } from "../src/worker/Worker.ts"
 import { testConfig } from "./support/TestConfig.ts"
 import { TestDb, truncateJobs } from "./support/TestDb.ts"
 
-const handlersLayer = (entries: Record<string, JobHandler>) => Layer.succeed(JobHandlers, new Map(Object.entries(entries)))
+type Run = JobHandler["run"]
+const handlersLayer = (entries: Record<string, Run>) =>
+  Layer.succeed(JobHandlers, new Map(Object.entries(entries).map(([k, run]) => [k, { run } satisfies JobHandler])))
 
 /** Polls the job's status until it matches or the deadline passes. */
 const waitForStatus = (id: string, status: string, within: Duration.Duration) =>
@@ -27,7 +29,7 @@ const waitForStatus = (id: string, status: string, within: Duration.Duration) =>
 const base = Layer.mergeAll(JobQueue.layer, WakeSignal.layer, Instance.layer).pipe(Layer.provideMerge(TestDb))
 
 /** Starts the worker in a child scope we can close to simulate SIGTERM. */
-const startWorker = (handlers: Record<string, JobHandler>, worker?: Parameters<typeof testConfig>[0]) =>
+const startWorker = (handlers: Record<string, Run>, worker?: Parameters<typeof testConfig>[0]) =>
   Effect.gen(function*() {
     const scope = yield* Scope.make()
     const ctx = yield* Effect.context<JobQueue | WakeSignal | Instance>()

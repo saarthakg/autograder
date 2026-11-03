@@ -75,7 +75,7 @@ layer(JobQueue.layer.pipe(Layer.provideMerge(TestDb)), { excludeTestServices: tr
         yield* q.enqueue({ kind: "echo", payload: {} })
         const first = Option.getOrThrow(yield* q.claim({ lease: Duration.millis(10), maxInFlightGlobal: 100 }))
         yield* Effect.sleep(Duration.millis(50))
-        assert.strictEqual(yield* q.sweepExpired, 1)
+        assert.strictEqual((yield* q.sweepExpired).requeued, 1)
         const second = Option.getOrThrow(yield* q.claim(claimOpts))
         assert.strictEqual(second.attempts, 2)
         assert.isFalse(yield* q.complete(first))
@@ -111,7 +111,9 @@ layer(JobQueue.layer.pipe(Layer.provideMerge(TestDb)), { excludeTestServices: tr
         yield* q.claim(short)
         yield* q.claim(short)
         yield* Effect.sleep(Duration.millis(50))
-        assert.strictEqual(yield* q.sweepExpired, 2)
+        const swept = yield* q.sweepExpired
+        assert.strictEqual(swept.requeued, 1)
+        assert.strictEqual(swept.buried.length, 1)
         const sql = yield* SqlClient.SqlClient
         const rows = yield* sql<{ status: string; n: number }>`
           SELECT status, count(*)::int AS n FROM job GROUP BY status ORDER BY status`
