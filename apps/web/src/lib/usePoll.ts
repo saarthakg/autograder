@@ -19,6 +19,17 @@ export const usePoll = (tick: () => Promise<void>, active: boolean, min = 2_000,
       timer = setTimeout(loop, delay)
     }
     timer = setTimeout(loop, delay)
-    return () => { stopped = true; if (timer) clearTimeout(timer) }
+    // Coming back to the tab refreshes at once, instead of waiting out the backoff.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return
+      delay = min
+      void tickRef.current()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      stopped = true
+      if (timer) clearTimeout(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [active, min, max])
 }
