@@ -46,3 +46,18 @@ describe("checkVerdicts + totalPoints (code computes totals, P13)", () => {
     if (check._tag === "Valid") expect(totalPoints(rubric, check.met)).toBe(0)
   })
 })
+
+describe("sample problems and eval cases (D-09, D-18)", () => {
+  it("every sample rubric is valid for its problem's max points", async () => {
+    const { SAMPLE_PROBLEMS } = await import("@autograder/domain")
+    for (const p of SAMPLE_PROBLEMS) expect(rubricProblems(p.rubric, p.maxPoints)).toEqual([])
+  })
+  it("every eval case's gold verdicts match its rubric's criteria count", async () => {
+    const { EVAL_CASES, SAMPLE_PROBLEMS } = await import("@autograder/domain")
+    for (const c of EVAL_CASES) {
+      const problem = SAMPLE_PROBLEMS.find((p) => p.key === c.problem)!
+      if (c.expect !== "abstain") expect(c.expect.length, c.key).toBe(problem.rubric.items.length)
+    }
+    expect(new Set(EVAL_CASES.map((c) => c.key)).size).toBe(EVAL_CASES.length)
+  })
+})
