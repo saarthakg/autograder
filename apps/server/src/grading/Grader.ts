@@ -7,7 +7,7 @@ import { ModelCallLedger, type ModelCallRecord } from "../model/Ledger.ts"
 import { ModelClient, type ModelError, type ModelResponse } from "../model/ModelClient.ts"
 import { loadPrompt, type PromptTemplate, render } from "./Prompts.ts"
 
-export const GRADE_PROMPT = "grade.v1"
+export const GRADE_PROMPT = "grade.v2"
 /** Upper bound for the budget guard; real cheap-tier grades cost ~$0.0005 (PLAN §7). */
 const MAX_COST_PER_CALL_USD = 0.02
 

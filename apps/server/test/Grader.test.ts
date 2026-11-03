@@ -71,7 +71,7 @@ describe("Grader", () => {
       if (result._tag === "Success") {
         expect(result.success.totalPoints).toBe(3)
         expect(result.success.maxPoints).toBe(4)
-        expect(result.success.promptVersion).toBe("grade.v1")
+        expect(result.success.promptVersion).toBe("grade.v2")
       }
       expect(ledger.map((c) => c.outcome)).toEqual(["ok"])
       // The prompt carries criteria ids and descriptions but never point values (D-11).

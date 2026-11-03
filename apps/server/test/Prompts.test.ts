@@ -7,12 +7,19 @@ const read = (id: string) => readFileSync(fileURLToPath(new URL(`../../../prompt
 
 describe("prompts", () => {
   it("parses both shipped prompts into system and user sections", () => {
-    for (const id of ["grade.v1", "rubric.v1"]) {
+    for (const id of ["grade.v1", "rubric.v1", "grade.v2", "rubric.v2"]) {
       const p = parsePrompt(id, read(id))
       expect(p.system.length).toBeGreaterThan(100)
       expect(p.user).toContain("{{problem}}")
       expect(p.system).not.toContain("<!--")
     }
+  })
+
+  it("v2 prompts state carried-forward credit and method-agnostic criteria", () => {
+    expect(parsePrompt("grade.v2", read("grade.v2")).system).toContain("CARRIED-FORWARD CREDIT")
+    const rubric = parsePrompt("rubric.v2", read("rubric.v2")).system
+    expect(rubric).toContain("MATHEMATICAL IDEA")
+    expect(rubric).toContain("CARRIED-FORWARD CREDIT")
   })
 
   it("render fails loudly on missing or unused variables", () => {
