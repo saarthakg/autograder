@@ -14,3 +14,24 @@ h1 { font-size: 2rem; margin: 0 0 0.5rem; }
 .status { font-size: 0.875rem; color: var(--muted); }
 .status[data-kind="ok"] { color: var(--ok); }
 .status[data-kind="down"] { color: var(--bad); }
+
+/* Whiteboard (minimal; Phase 3 polishes it) */
+.whiteboard { display: inline-flex; flex-direction: column; gap: 0.5rem; }
+.whiteboard canvas { border: 1px solid #d8d5cc; border-radius: 8px; background: #fff; cursor: crosshair; }
+.toolbar { display: flex; gap: 0.5rem; }
+.toolbar button, .actions button, .case-list button { min-height: 40px; padding: 0 0.9rem; border-radius: 8px; border: 1px solid #c9c5ba; background: #fff; font: inherit; cursor: pointer; }
+.toolbar button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Fixture capture (dev) */
+.fixtures { padding: 1rem; }
+.fixtures header { display: flex; gap: 1.5rem; align-items: center; }
+.fixtures-body { display: flex; gap: 1.5rem; margin-top: 1rem; }
+.case-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.case-list button { width: 13rem; text-align: left; }
+.case-list button[aria-current="true"] { border-color: var(--ink); font-weight: 600; }
+.problem { font-size: 1.1rem; }
+.draw { background: #fff8e1; padding: 0.5rem 0.75rem; border-radius: 6px; }
+.gold { color: var(--muted); font-size: 0.875rem; }
+.actions { display: flex; gap: 1rem; align-items: center; margin-top: 0.75rem; }
+.actions .primary { background: var(--ok); color: #fff; border-color: var(--ok); }

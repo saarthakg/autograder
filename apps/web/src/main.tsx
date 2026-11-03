@@ -2,6 +2,7 @@ import { Effect } from "effect"
 import { StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { fetchHealth } from "./api.ts"
+import { FixtureCapture } from "./dev/FixtureCapture.tsx"
 import "./styles.css"
 
 type Status = { readonly kind: "loading" } | { readonly kind: "ok"; readonly version: string } | { readonly kind: "down" }
@@ -31,6 +32,6 @@ const root = document.getElementById("root")
 if (root === null) throw new Error("missing #root")
 createRoot(root).render(
   <StrictMode>
-    <App />
+    {window.location.pathname === "/dev/fixtures" ? <FixtureCapture /> : <App />}
   </StrictMode>
 )

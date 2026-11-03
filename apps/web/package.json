@@ -10,6 +10,7 @@
   "dependencies": {
     "@autograder/domain": "workspace:*",
     "effect": "4.1.2",
+    "perfect-freehand": "1.2.3",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
