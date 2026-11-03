@@ -268,6 +268,10 @@ Status values:
   - The **strong reference model always appears** beside the cheap ones in every table and chart.
   - **If no cheap model clears the bar**, pick the best one, say so plainly in the README, and list the gates it misses.
 - **Status:** Accepted with the amendments above.
+- **First run (2026-11-03, `evals/results/2026-11-03T05-10-14-515Z/`):** 20 cases × k=3 × 5 models; spend $0.23 billed, $0.32 at list price.
+  - `openai/gpt-6-luna`, `google/gemini-3.1-flash-lite` and the `gpt-6.1-sol` reference clear every gate. `deepseek/deepseek-v4.1-flash` misses within-one by 0.2 points: 55/58, after 2 empty provider responses were excluded. `qwen/qwen3-vl-30b-a3b-instruct` misses 4 gates.
+  - **Recommended: `openai/gpt-6-luna`** ($0.00023/grade at list price, p95 4.5 s). Awaiting Saarthak's approval before it becomes the default.
+  - **Caveat:** with n = 20, every top model's CI lower bound is about 76–82%. This set shows the cheap tier matches the reference here, but it cannot separate the top four.
 
 ## Infra and load testing
 
@@ -461,3 +465,11 @@ Status values:
 - **Supersedes:** D-20 and D-27. Adjusts D-21 to D-23 as noted.
 - **Refs:** P28, P29, P33, §0.1 (scoping under a tight time budget)
 - **Status:** Accepted (Saarthak, 2026-11-02)
+
+### D-29 Eval hygiene: fingerprinted fixtures, list-price comparison, rescore without spend
+- **Fixtures are fingerprinted.** Each fixture stores a hash of the problem and drawing instructions its page showed. The server refuses stale saves, and the runner refuses to score stale fixtures. This came from two fixtures drawn in a tab opened before the instructions changed, which would have silently corrupted gold.
+- **Models are compared at live list price** from measured tokens. OpenRouter billed $0 for all 60 Gemini calls, which made a mid-priced model look free. Billed cost is reported separately as actual spend.
+- **`evals/src/rescore.ts`** rebuilds a summary from saved raw results, so reporting fixes never need a second paid run.
+- **Raw `results.json` stays local** (gitignored). The summary and the compact `calibration.json` (per-call latency and tokens, for the Phase 4 simulator) are committed.
+- **Refs:** P17, P29, W2
+- **Status:** Accepted
