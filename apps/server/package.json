@@ -1,0 +1,23 @@
+{
+  "name": "@autograder/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/main.ts",
+    "start": "bun src/main.ts",
+    "migrate": "bun src/migrate.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun --bun vitest run"
+  },
+  "dependencies": {
+    "@autograder/domain": "workspace:*",
+    "@effect/platform-bun": "4.1.2",
+    "@effect/sql-pg": "4.1.2",
+    "effect": "4.1.2"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.1.2",
+    "@types/bun": "^1.4.4",
+    "vitest": "5.1.0"
+  }
+}
