@@ -10,13 +10,23 @@ export type Tool = "pen" | "eraser"
  * Phase 3 polishes the UI; this is enough to draw eval fixtures.
  */
 export function Whiteboard(props: {
-  readonly width: number
+  /** Fixed width in CSS px; omit to fill the container (Chromebook-first, P11). */
+  readonly width?: number
   readonly height: number
   readonly onChange: (strokes: ReadonlyArray<Stroke>) => void
   /** Bump to clear the board from outside (e.g. after saving a fixture). */
   readonly resetKey?: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const boxRef = useRef<HTMLDivElement | null>(null)
+  const [measured, setMeasured] = useState(props.width ?? 600)
+  const width = props.width ?? measured
+  useEffect(() => {
+    if (props.width !== undefined || !boxRef.current) return
+    const ro = new ResizeObserver(([entry]) => entry && setMeasured(Math.floor(entry.contentRect.width)))
+    ro.observe(boxRef.current)
+    return () => ro.disconnect()
+  }, [props.width])
   const [strokes, setStrokes] = useState<ReadonlyArray<Stroke>>([])
   const [history, setHistory] = useState<ReadonlyArray<ReadonlyArray<Stroke>>>([])
   const [tool, setTool] = useState<Tool>("pen")
@@ -39,11 +49,11 @@ export function Whiteboard(props: {
     const ctx = canvas?.getContext("2d")
     if (!canvas || !ctx) return
     const dpr = window.devicePixelRatio || 1
-    canvas.width = props.width * dpr
+    canvas.width = width * dpr
     canvas.height = props.height * dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.fillStyle = "#ffffff"
-    ctx.fillRect(0, 0, props.width, props.height)
+    ctx.fillRect(0, 0, width, props.height)
     ctx.fillStyle = "#1f2430"
     for (const s of strokes) ctx.fill(strokePath(s))
     if (drawing.current) ctx.fill(strokePath({ points: drawing.current.points }))
@@ -63,26 +73,34 @@ export function Whiteboard(props: {
     if (keep.length !== strokes.length) commit(keep)
   }
 
+  const undo = () => {
+    const prev = history[history.length - 1]
+    if (prev === undefined) return
+    setHistory(history.slice(0, -1)); setStrokes(prev); onChange(prev)
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault()
+        undo()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
+
   return (
-    <div className="whiteboard">
+    <div className="whiteboard" ref={boxRef}>
       <div className="toolbar" role="toolbar">
         <button aria-pressed={tool === "pen"} onClick={() => setTool("pen")}>✏️ Pen</button>
         <button aria-pressed={tool === "eraser"} onClick={() => setTool("eraser")}>🧽 Eraser</button>
-        <button
-          disabled={history.length === 0}
-          onClick={() => {
-            const prev = history[history.length - 1]
-            if (prev === undefined) return
-            setHistory(history.slice(0, -1)); setStrokes(prev); onChange(prev)
-          }}
-        >
-          ↶ Undo
-        </button>
+        <button disabled={history.length === 0} onClick={undo} title="Undo (Ctrl+Z)">↶ Undo</button>
         <button disabled={strokes.length === 0} onClick={() => commit([])}>Clear</button>
       </div>
       <canvas
         ref={canvasRef}
-        style={{ width: props.width, height: props.height, touchAction: "none" }}
+        style={{ width, height: props.height, touchAction: "none" }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
           if (tool === "eraser") return erase(e)

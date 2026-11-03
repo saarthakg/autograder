@@ -1,0 +1,54 @@
+/**
+ * Per-browser conveniences only (P7): everything durable lives in Postgres.
+ * localStorage can be unavailable (private mode, blocked storage), so every
+ * access is guarded and the app still works, just without remembering.
+ */
+const get = (key: string): string | null => {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+const set = (key: string, value: string | null) => {
+  try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value) } catch { /* not remembered */ }
+}
+
+const TEACHER = "ag.teacher"
+const STUDENT = "ag.student"
+
+/** The teacher's capability secret: from the link's #k= fragment, else remembered (D-04). */
+export const teacherSecret = {
+  read: (): string | null => {
+    const fromHash = new URLSearchParams(window.location.hash.slice(1)).get("k")
+    if (fromHash) set(TEACHER, fromHash)
+    return fromHash ?? get(TEACHER)
+  },
+  save: (secret: string) => set(TEACHER, secret),
+  forget: () => set(TEACHER, null)
+}
+
+export const teacherLink = (secret: string) => `${window.location.origin}/t#k=${secret}`
+
+export interface StudentSession {
+  readonly token: string
+  readonly rejoinCode: string
+  readonly classCode: string
+  readonly displayName: string
+}
+
+export const studentSession = {
+  read: (): StudentSession | null => {
+    const raw = get(STUDENT)
+    if (raw === null) return null
+    try { return JSON.parse(raw) as StudentSession } catch { return null }
+  },
+  save: (s: StudentSession) => set(STUDENT, JSON.stringify(s)),
+  forget: () => set(STUDENT, null)
+}
+
+/** A stable idempotency key per (problem, drawing): a retried submit can't double-submit (P23). */
+export const drawingKey = (problemId: string) => {
+  const k = `ag.key.${problemId}`
+  const existing = get(k)
+  if (existing) return existing
+  const fresh = crypto.randomUUID()
+  set(k, fresh)
+  return fresh
+}
