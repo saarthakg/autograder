@@ -213,7 +213,8 @@ Status values:
   If it exposes all four cleanly, use it instead.
 - **Why:** We need direct control over cost accounting, error classification (402 vs 429 vs 5xx) and the base-URL swap to fake-llm. A generic `LanguageModel` abstraction may hide those.
 - **Refs:** P21, P25, §5
-- **Status:** Accepted. To be verified by a Phase 2 spike.
+- **Spike result (Phase 2):** `@effect/ai-openrouter@4.1.2` handles `Retry-After`, 402 and `response_format`, but does not pass through OpenRouter's `usage.cost`. That figure is authoritative, because it includes image pricing and whichever provider was routed to. So the client is hand-rolled (about 150 lines in `apps/server/src/model/ModelClient.ts`). For the strict JSON Schema it reuses Effect's own `OpenAiStructuredOutput.toCodecOpenAI`, which inlines definitions, sets `additionalProperties: false`, and keeps every constraint enforced by the returned codec.
+- **Status:** Accepted. Hand-rolled client confirmed by the spike.
 
 ### D-15 `model_call` ledger table
 - **Decision:** Add a `model_call` table that records every call, including failed ones: purpose, model, status, tokens, cost, latency and error kind.
