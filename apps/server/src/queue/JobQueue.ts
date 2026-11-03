@@ -46,10 +46,12 @@ export class JobQueue extends Context.Service<JobQueue, {
     readonly maxInFlightGlobal: number
   }) => Effect.Effect<Option.Option<JobRow>, SqlError.SqlError>
   readonly complete: (job: JobRow) => Effect.Effect<boolean, SqlError.SqlError>
+  /** `permanent` buries immediately, for failures that cannot succeed on retry. */
   readonly retryOrBury: (
     job: JobRow,
     error: string,
-    delay: Duration.Duration
+    delay: Duration.Duration,
+    options?: { readonly permanent?: boolean }
   ) => Effect.Effect<RetryOutcome, SqlError.SqlError>
   /** Re-queues (or buries, if out of attempts) jobs whose worker died (P22). */
   readonly sweepExpired: Effect.Effect<number, SqlError.SqlError>
@@ -115,15 +117,20 @@ export class JobQueue extends Context.Service<JobQueue, {
         return done.length === 1
       })
 
-      const retryOrBury = Effect.fn("JobQueue.retryOrBury")(function*(job: JobRow, error: string, delay: Duration.Duration) {
+      const retryOrBury = Effect.fn("JobQueue.retryOrBury")(function*(
+        job: JobRow,
+        error: string,
+        delay: Duration.Duration,
+        options?: { readonly permanent?: boolean }
+      ) {
         const result = yield* sql.unsafe<{ status: string }>(
           `UPDATE job SET
-             status = CASE WHEN attempts >= max_attempts THEN 'dead' ELSE 'queued' END,
-             finished_at = CASE WHEN attempts >= max_attempts THEN now() END,
+             status = CASE WHEN $5 OR attempts >= max_attempts THEN 'dead' ELSE 'queued' END,
+             finished_at = CASE WHEN $5 OR attempts >= max_attempts THEN now() END,
              run_after = now() + make_interval(secs => $3::double precision),
              lease_until = NULL, last_error = $4
            WHERE id = $1 AND status = 'running' AND attempts = $2 RETURNING status`,
-          [job.id, job.attempts, Duration.toSeconds(delay), error.slice(0, 2000)]
+          [job.id, job.attempts, Duration.toSeconds(delay), error.slice(0, 2000), options?.permanent === true]
         )
         const row = result[0]
         return row === undefined ? "lost" : row.status === "dead" ? "dead" : "retrying"
