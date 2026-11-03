@@ -1,0 +1,11 @@
+.git
+.context
+.repos
+.env
+.env.*
+!.env.example
+CLAUDE.md
+**/node_modules
+**/dist
+loadtest/reports
+evals/.cache
