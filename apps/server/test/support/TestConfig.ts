@@ -1,17 +1,15 @@
-import { Duration, Layer, Option, Redacted } from "effect"
+import { Duration, Layer, Redacted } from "effect"
 import { AppConfig } from "../../src/AppConfig.ts"
 
 export const testConfig = (overrides: Partial<AppConfig["Service"]["worker"]> = {}) =>
   Layer.succeed(
     AppConfig,
     AppConfig.of({
-      role: "all",
       port: 0,
       version: "test",
       databaseUrl: Redacted.make("unused"),
       dbPoolMax: 5,
-      internalToken: Redacted.make("test-token"),
-      workerWakeUrl: Option.none(),
+      adminToken: Redacted.make("test-token"),
       webDist: "/nonexistent",
       worker: {
         concurrency: 4,

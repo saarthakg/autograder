@@ -13,7 +13,7 @@ export const DbLive = Layer.unwrap(
     return PgClient.layer({
       url: config.databaseUrl,
       maxConnections: config.dbPoolMax,
-      applicationName: `autograder-${config.role}`
+      applicationName: "autograder"
     })
   })
 )

@@ -1,20 +1,16 @@
-import { Role } from "@autograder/domain"
-import { Config, Context, Duration, Effect, Layer, Option, Redacted } from "effect"
+import { Config, Context, Duration, Effect, Layer, Redacted } from "effect"
 
 /**
  * Everything the server reads from the environment, parsed once at startup.
  * A missing or malformed value fails boot loudly instead of defaulting silently (P20).
  */
 export class AppConfig extends Context.Service<AppConfig, {
-  readonly role: Role
   readonly port: number
   readonly version: string
   readonly databaseUrl: Redacted.Redacted
   readonly dbPoolMax: number
-  readonly internalToken: Redacted.Redacted
-  /** Worker service URL for wake-ups (D-27). None means the worker runs in this process. */
-  readonly workerWakeUrl: Option.Option<string>
-  /** Serve the built web app from here (api/all roles). */
+  readonly adminToken: Redacted.Redacted
+  /** Serve the built web app from here. */
   readonly webDist: string
   readonly worker: {
     readonly concurrency: number
@@ -29,13 +25,11 @@ export class AppConfig extends Context.Service<AppConfig, {
   static readonly layer = Layer.effect(
     AppConfig,
     Effect.gen(function*() {
-      const role = yield* Config.Literals(["api", "worker", "all"], "ROLE").pipe(Config.withDefault("all"))
       const port = yield* Config.Port("PORT").pipe(Config.withDefault(3000))
       const version = yield* Config.String("APP_VERSION").pipe(Config.withDefault("dev"))
       const databaseUrl = yield* Config.Redacted("DATABASE_URL")
       const dbPoolMax = yield* Config.Int("DB_POOL_MAX").pipe(Config.withDefault(10))
-      const internalToken = yield* Config.Redacted("INTERNAL_TOKEN")
-      const wakeUrl = yield* Config.String("WORKER_WAKE_URL").pipe(Config.withDefault(""))
+      const adminToken = yield* Config.Redacted("ADMIN_TOKEN")
       const webDist = yield* Config.String("WEB_DIST").pipe(Config.withDefault("../web/dist"))
       const concurrency = yield* Config.Int("MODEL_CONCURRENCY").pipe(Config.withDefault(32))
       const maxInFlightGlobal = yield* Config.Int("MODEL_MAX_IN_FLIGHT").pipe(Config.withDefault(64))
@@ -45,13 +39,11 @@ export class AppConfig extends Context.Service<AppConfig, {
         Config.withDefault(Duration.seconds(8))
       )
       return AppConfig.of({
-        role,
         port,
         version,
         databaseUrl,
         dbPoolMax,
-        internalToken,
-        workerWakeUrl: wakeUrl === "" ? Option.none() : Option.some(wakeUrl),
+        adminToken,
         webDist,
         worker: {
           concurrency,

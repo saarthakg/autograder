@@ -6,7 +6,6 @@ import { AppConfig } from "../AppConfig.ts"
 import { Instance } from "../Instance.ts"
 import { JobQueue, type JobRow } from "../queue/JobQueue.ts"
 import { WakeSignal } from "../worker/WakeSignal.ts"
-import { JobWaker } from "./JobWaker.ts"
 
 const toView = (job: JobRow) =>
   new JobView({
@@ -32,7 +31,6 @@ export const SystemHandlers = HttpApiBuilder.group(
         Effect.sync(() =>
           new Health({
             status: "ok",
-            role: config.role,
             version: config.version,
             instanceId: instance.id,
             uptimeSec: Math.round((Date.now() - instance.startedAt) / 1000)
@@ -48,18 +46,18 @@ export const SystemHandlers = HttpApiBuilder.group(
   })
 )
 
-export const InternalHandlers = HttpApiBuilder.group(
+export const AdminHandlers = HttpApiBuilder.group(
   Api,
-  "internal",
+  "admin",
   Effect.fn(function*(handlers) {
     const queue = yield* JobQueue
-    const waker = yield* JobWaker
-    const signal = yield* WakeSignal
+    // Same process as the worker (D-28): ring it directly after the job commits.
+    const wake = yield* WakeSignal
     return handlers.handleAll({
       enqueueEcho: ({ payload }) =>
         Effect.gen(function*() {
           const { id } = yield* queue.enqueue({ kind: "echo", payload: {}, runId: payload.runId })
-          yield* waker.wake
+          yield* wake.ring
           return toView(Option.getOrThrow(yield* queue.get(id)))
         }).pipe(Effect.orDie),
       getJob: ({ params }) =>
@@ -69,10 +67,9 @@ export const InternalHandlers = HttpApiBuilder.group(
             onNone: () => Effect.fail(new JobNotFound({ id: params.id })),
             onSome: (job) => Effect.succeed(toView(job))
           }))
-        ),
-      wake: () => signal.ring
+        )
     })
   })
 )
 
-export const ApiHandlers = Layer.mergeAll(SystemHandlers, InternalHandlers)
+export const ApiHandlers = Layer.mergeAll(SystemHandlers, AdminHandlers)

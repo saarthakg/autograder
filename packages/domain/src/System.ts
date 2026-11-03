@@ -1,15 +1,10 @@
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
 
-/** Which parts of the server a process runs (D-27: api and worker are separate services). */
-export const Role = Schema.Literals(["api", "worker", "all"])
-export type Role = typeof Role.Type
-
 export class Health extends Schema.Class<Health>("Health")({
   status: Schema.Literal("ok"),
-  role: Role,
   version: Schema.String,
-  /** Lets us tell restarts apart, e.g. when checking the worker survived 20+ idle minutes. */
+  /** Lets logs and probes tell instances and restarts apart. */
   instanceId: Schema.String,
   uptimeSec: Schema.Finite
 }) {}

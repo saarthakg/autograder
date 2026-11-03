@@ -1,11 +1,10 @@
-import { Api, InternalAuth } from "@autograder/domain"
+import { AdminAuth, Api } from "@autograder/domain"
 import { assert, layer } from "@effect/vitest"
 import { Effect, Layer } from "effect"
-import { FetchHttpClient, HttpClientRequest, HttpServer } from "effect/http"
+import { HttpClientRequest, HttpServer } from "effect/http"
 import { HttpApiMiddleware, HttpApiTest } from "effect/http-api"
 import { ApiHandlers } from "../src/http/Handlers.ts"
-import { InternalAuthLive } from "../src/http/InternalAuth.ts"
-import { JobWaker } from "../src/http/JobWaker.ts"
+import { AdminAuthLive } from "../src/http/AdminAuth.ts"
 import { Instance } from "../src/Instance.ts"
 import { JobQueue } from "../src/queue/JobQueue.ts"
 import { WakeSignal } from "../src/worker/WakeSignal.ts"
@@ -13,20 +12,17 @@ import { testConfig } from "./support/TestConfig.ts"
 import { TestDb, truncateJobs } from "./support/TestDb.ts"
 
 const withToken = (token: string | undefined) =>
-  HttpApiMiddleware.layerClient(InternalAuth, ({ next, request }) =>
+  HttpApiMiddleware.layerClient(AdminAuth, ({ next, request }) =>
     next(token === undefined ? request : HttpClientRequest.bearerToken(request, token)))
 
 const Handlers = ApiHandlers.pipe(
-  Layer.provideMerge(InternalAuthLive),
-  Layer.provide(Layer.mergeAll(JobQueue.layer, JobWaker.layer).pipe(
-    // FetchHttpClient is never called here (no wake URL in tests); JobWaker just requires one.
-    Layer.provideMerge(Layer.mergeAll(WakeSignal.layer, Instance.layer, FetchHttpClient.layer))
-  )),
+  Layer.provideMerge(AdminAuthLive),
+  Layer.provide(JobQueue.layer.pipe(Layer.provideMerge(Layer.mergeAll(WakeSignal.layer, Instance.layer)))),
   Layer.provide(testConfig()),
   Layer.provideMerge(TestDb)
 )
 
-const makeClient = HttpApiTest.groups(Api, ["system", "internal"])
+const makeClient = HttpApiTest.groups(Api, ["system", "admin"])
 
 layer(Layer.mergeAll(Handlers, HttpServer.layerServices), { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("health answers without touching the database", () =>
@@ -34,7 +30,6 @@ layer(Layer.mergeAll(Handlers, HttpServer.layerServices), { excludeTestServices:
       const client = yield* makeClient
       const health = yield* client.health()
       assert.strictEqual(health.status, "ok")
-      assert.strictEqual(health.role, "all")
     }).pipe(Effect.provide(withToken(undefined))))
 
   it.effect("ready pings the database", () =>
@@ -44,12 +39,12 @@ layer(Layer.mergeAll(Handlers, HttpServer.layerServices), { excludeTestServices:
       assert.strictEqual(ready.db, "ok")
     }).pipe(Effect.provide(withToken(undefined))))
 
-  it.effect("internal endpoints reject a missing or wrong token", () =>
+  it.effect("admin endpoints reject a missing or wrong token", () =>
     Effect.gen(function*() {
       const client = yield* makeClient
-      const noToken = yield* client.internal.enqueueEcho({ payload: {} }).pipe(Effect.flip, Effect.provide(withToken(undefined)))
+      const noToken = yield* client.admin.enqueueEcho({ payload: {} }).pipe(Effect.flip, Effect.provide(withToken(undefined)))
       assert.strictEqual(noToken._tag, "Unauthorized")
-      const wrong = yield* client.internal.enqueueEcho({ payload: {} }).pipe(Effect.flip, Effect.provide(withToken("nope")))
+      const wrong = yield* client.admin.enqueueEcho({ payload: {} }).pipe(Effect.flip, Effect.provide(withToken("nope")))
       assert.strictEqual(wrong._tag, "Unauthorized")
     }).pipe(Effect.provide(withToken(undefined))))
 
@@ -57,9 +52,9 @@ layer(Layer.mergeAll(Handlers, HttpServer.layerServices), { excludeTestServices:
     Effect.gen(function*() {
       yield* truncateJobs
       const client = yield* makeClient
-      const job = yield* client.internal.enqueueEcho({ payload: { runId: "run-123" } })
+      const job = yield* client.admin.enqueueEcho({ payload: { runId: "run-123" } })
       assert.strictEqual(job.status, "queued")
-      const fetched = yield* client.internal.getJob({ params: { id: job.id } })
+      const fetched = yield* client.admin.getJob({ params: { id: job.id } })
       assert.strictEqual(fetched.id, job.id)
     }).pipe(Effect.provide(withToken("test-token"))))
 })

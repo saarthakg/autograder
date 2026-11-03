@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity } from "effect/http-api"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSecurity } from "effect/http-api"
 
 export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
@@ -7,8 +7,8 @@ export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   { httpApiStatus: 401 }
 ) {}
 
-/** Shared bearer token for operator and service-to-service endpoints. */
-export class InternalAuth extends HttpApiMiddleware.Service<InternalAuth>()("autograder/InternalAuth", {
+/** Operator bearer token (ADMIN_TOKEN): ops endpoints and, later, load-test runs (D-28). */
+export class AdminAuth extends HttpApiMiddleware.Service<AdminAuth>()("autograder/AdminAuth", {
   requiredForClient: true,
   security: { bearer: HttpApiSecurity.bearer },
   error: Unauthorized
@@ -37,9 +37,9 @@ export class JobNotFound extends Schema.TaggedError<JobNotFound>()(
   { httpApiStatus: 404 }
 ) {}
 
-export class InternalApi extends HttpApiGroup.make("internal")
+export class AdminApi extends HttpApiGroup.make("admin")
   .add(
-    // Phase 1 smoke path: proves API -> queue -> woken worker end to end.
+    // Phase 1 smoke path: proves API -> queue -> in-process worker end to end, deployed.
     HttpApiEndpoint.post("enqueueEcho", "/jobs/echo", {
       payload: Schema.Struct({ runId: Schema.optional(Schema.String) }),
       success: JobView
@@ -48,10 +48,8 @@ export class InternalApi extends HttpApiGroup.make("internal")
       params: { id: JobId },
       success: JobView,
       error: JobNotFound
-    }),
-    // Sent by the API after it commits a job (D-27). A lost wake only delays work.
-    HttpApiEndpoint.post("wake", "/wake", { success: HttpApiSchema.NoContent })
+    })
   )
-  .middleware(InternalAuth)
-  .prefix("/internal")
+  .middleware(AdminAuth)
+  .prefix("/admin")
 {}
