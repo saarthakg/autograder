@@ -53,7 +53,7 @@ export const SAMPLE_PROBLEMS: ReadonlyArray<SampleProblem> = [
     maxPoints: 3,
     rubric: new Rubric({
       items: [
-        item("c1", "Sets up the bill correctly", "Writes an equation such as 15 + 0.10t = 23.50, or explicitly subtracts the $15 fee from $23.50 as the first step.", 1),
+        item("c1", "Accounts for the $15 fee", "Accounts for the $15 monthly fee before dividing by the per-text cost: an equation such as 15 + 0.10t = 23.50, or subtracting 15 from 23.50 first. Any method that handles the fee correctly counts.", 1),
         item("c2", "Finds the $8.50 spent on texts", "Gets 8.50 for the text cost, e.g. 0.10t = 8.50 or 23.50 − 15 = 8.50.", 1),
         item("c3", "Answers 85 texts", "Final answer 85 (with or without the word texts).", 1)
       ],
@@ -82,7 +82,7 @@ export const EVAL_CASES: ReadonlyArray<EvalCase> = [
   { key: "p1-arith-slip", problem: "p1", kind: "arithmetic-slip", draw: "3x − 6 = 2x + 5 ↵ x − 6 = 5 ↵ x = −1", expect: [1, 1, 0] },
   { key: "p1-conceptual", problem: "p1", kind: "conceptual", draw: "3x − 2 = 2x + 5 ↵ x − 2 = 5 ↵ x = 7   (only distributed to x)", expect: [0, 1, 0] },
   { key: "p1-answer-only", problem: "p1", kind: "answer-only", draw: "x = 11", expect: [0, 0, 1] },
-  { key: "p1-messy", problem: "p1", kind: "messy", draw: "3x − 2 = 2x + 5 (cross it out) ↵ 3x − 6 = 2x + 5 ↵ x = 11, a bit untidy", expect: [1, 1, 1] },
+  { key: "p1-messy", problem: "p1", kind: "messy", draw: "3x − 2 = 2x + 5 (cross it out) ↵ 3x − 6 = 2x + 5 ↵ x − 6 = 5 ↵ x = 11, a bit untidy", expect: [1, 1, 1] },
   { key: "p2-standard", problem: "p2", kind: "standard", draw: "−2x > 8 ↵ x < −4", expect: [1, 1, 1] },
   { key: "p2-alternative", problem: "p2", kind: "alternative", draw: "3 − 11 > 2x ↵ −8 > 2x ↵ −4 > x", expect: [1, 1, 1] },
   { key: "p2-arith-slip", problem: "p2", kind: "arithmetic-slip", draw: "−2x > 14 ↵ x < −7", expect: [0, 1, 0] },
@@ -94,7 +94,7 @@ export const EVAL_CASES: ReadonlyArray<EvalCase> = [
   { key: "p3-arith-slip", problem: "p3", kind: "arithmetic-slip", draw: "15 + 0.10t = 23.50 ↵ 0.10t = 7.50 ↵ t = 75", expect: [1, 0, 0] },
   { key: "p3-conceptual", problem: "p3", kind: "conceptual", draw: "23.50 ÷ 0.10 = 235 texts   (ignores the $15 fee)", expect: [0, 0, 0] },
   { key: "p3-answer-only", problem: "p3", kind: "answer-only", draw: "85", expect: [0, 0, 1] },
-  { key: "p3-messy", problem: "p3", kind: "messy", draw: "0.10t = 23.50 (cross out) ↵ 15 + 0.10t = 23.50 ↵ t = 85, untidy", expect: [1, 1, 1] },
+  { key: "p3-messy", problem: "p3", kind: "messy", draw: "0.10t = 23.50 (cross out) ↵ 15 + 0.10t = 23.50 ↵ 0.10t = 8.50 ↵ t = 85, untidy", expect: [1, 1, 1] },
   { key: "p1-scribble", problem: "p1", kind: "unreadable", draw: "Scribbles and loops, no real math", expect: "abstain" },
   { key: "p2-illegible", problem: "p2", kind: "unreadable", draw: "Something math-like but tiny and overlapping, so it can't be read", expect: "abstain" }
 ]
