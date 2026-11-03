@@ -25,6 +25,7 @@ RUN bun install --frozen-lockfile --production --ignore-scripts
 COPY packages/domain/src packages/domain/src
 COPY apps/server/src apps/server/src
 COPY apps/server/migrations apps/server/migrations
+COPY prompts prompts
 COPY --from=build /app/apps/web/dist apps/web/dist
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION WEB_DIST=/app/apps/web/dist PORT=8080
