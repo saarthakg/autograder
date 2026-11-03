@@ -22,8 +22,10 @@ loadtest/reports/*
 !loadtest/reports/.gitkeep
 loadtest/.runs/
 
-# Eval scratch output; curated results live in evals/results/
+# Eval scratch output. Per-run raw results stay local; summaries and the
+# compact calibration file are committed.
 evals/.cache/
+evals/results/*/results.json
 
 # Tooling noise
 .DS_Store
