@@ -8,7 +8,11 @@
   ],
   "scripts": {
     "prepare": "effect-tsgo patch --typescript --no-oxlint",
-    "typecheck": "bun run --filter '@autograder/*' typecheck"
+    "typecheck": "bun run --filter '@autograder/*' typecheck",
+    "test": "bun run --filter @autograder/server test",
+    "build": "bun run --filter @autograder/web build",
+    "migrate": "bun run --filter @autograder/server migrate",
+    "dev": "bun run --filter @autograder/server dev"
   },
   "devDependencies": {
     "@effect/tsgo": "0.64.1",
