@@ -60,7 +60,9 @@ export class Grader extends Context.Service<Grader, {
       const prompt: PromptTemplate = yield* loadPrompt(config.promptsDir, GRADE_PROMPT).pipe(Effect.orDie)
 
       const grade = Effect.fn("Grader.grade")(function*(input: GradeInput) {
+        // An explicit model (the eval) is measured alone; the app path gets the configured fallbacks.
         const model = input.model ?? config.model.gradingModel
+        const fallbackModels = input.model === undefined ? config.model.gradingFallbackModels : []
         const simulated = input.simulated === true
         const text = render(prompt.user, {
           problem: input.problem.prompt,
@@ -77,6 +79,7 @@ export class Grader extends Context.Service<Grader, {
             if (!simulated) yield* guard.check(MAX_COST_PER_CALL_USD)
             const response = yield* client.complete({
               model,
+              fallbackModels,
               system: prompt.system,
               text,
               imagePng: input.imagePng,
@@ -100,12 +103,12 @@ export class Grader extends Context.Service<Grader, {
               Effect.tapError((reason) => ledger.record({ ...base, ...usage, outcome: "invalid_output", error: reason })),
               Effect.mapError((reason) => new InvalidModelOutput({ message: reason }))
             )
-            yield* ledger.record({ ...base, ...usage, outcome: "ok" })
-            return parsed
+            yield* ledger.record({ ...base, ...usage, model: response.model, outcome: "ok" })
+            return { ...parsed, answeredBy: response.model }
           })
 
         // P14: one retry with the validation error fed back, then give up honestly.
-        const { output, met } = yield* attempt(undefined).pipe(
+        const { output, met, answeredBy } = yield* attempt(undefined).pipe(
           Effect.catchTag("InvalidModelOutput", (e) =>
             attempt(
               `Your previous answer was rejected: ${e.message}. Return JSON matching the schema, ` +
@@ -117,7 +120,7 @@ export class Grader extends Context.Service<Grader, {
           met,
           totalPoints: totalPoints(input.rubric, met),
           maxPoints: maxPoints(input.rubric),
-          model,
+          model: answeredBy,
           promptVersion: GRADE_PROMPT,
           startedAt,
           finishedAt: new Date(),

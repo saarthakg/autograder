@@ -270,7 +270,18 @@ Status values:
 - **Status:** Accepted with the amendments above.
 - **First run (2026-11-03, `evals/results/2026-11-03T05-10-14-515Z/`):** 20 cases × k=3 × 5 models; spend $0.23 billed, $0.32 at list price.
   - `openai/gpt-6-luna`, `google/gemini-3.1-flash-lite` and the `gpt-6.1-sol` reference clear every gate. `deepseek/deepseek-v4.1-flash` misses within-one by 0.2 points: 55/58, after 2 empty provider responses were excluded. `qwen/qwen3-vl-30b-a3b-instruct` misses 4 gates.
-  - **Recommended: `openai/gpt-6-luna`** ($0.00023/grade at list price, p95 4.5 s). Awaiting Saarthak's approval before it becomes the default.
+  - **Chosen: `openai/gpt-6-luna`** (approved 2026-11-03). On the 20-case set it scored:
+    - exact total 95.0% [76–99]
+    - criterion accuracy 100% [82–100]
+    - false full credit 0%, false zero 0%
+    - flip rate 0% at k=3, 100% schema-valid, no provider errors
+    - p50 3.4 s, p95 4.5 s
+    - $0.00023 per grade at list price, about 1/16 of the `gpt-6.1-sol` reference ($0.00363) with the same scores
+  - **Fallback: `google/gemini-3.1-flash-lite`** through OpenRouter's `models` routing. If the primary fails, OpenRouter tries the fallback.
+    - It's config only (`GRADING_FALLBACK_MODELS`), with no extra code path to test.
+    - It also cleared every gate, and its p95 is 2.3 s. It costs about 4× more ($0.00092), which is acceptable for an occasional fallback.
+    - Each grade records the model that actually answered.
+    - With fallbacks, the client sends only parameters every model in the chain supports.
   - **Caveat:** with n = 20, every top model's CI lower bound is about 76–82%. This set shows the cheap tier matches the reference here, but it cannot separate the top four.
 
 ## Infra and load testing

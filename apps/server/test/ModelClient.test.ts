@@ -52,7 +52,7 @@ describe("OpenRouter ModelClient", () => {
         usage: { prompt_tokens: 1200, completion_tokens: 210, cost: 0.000345 }
       })
       const res = yield* run(provider)
-      expect(res).toMatchObject({ content: "{\"ok\":true}", inputTokens: 1200, outputTokens: 210, costUsd: 0.000345 })
+      expect(res).toMatchObject({ model: "test/grader", content: "{\"ok\":true}", inputTokens: 1200, outputTokens: 210, costUsd: 0.000345 })
       const sent = provider.seen[0]
       expect(sent.url).toBe("https://model.test/api/v1/chat/completions")
       expect(sent.auth).toBe("Bearer test-key")
@@ -104,3 +104,28 @@ describe("parseRetryAfter", () => {
     expect(parseRetryAfter("soon", 0)).toBeUndefined()
   })
 })
+
+describe("fallback routing (D-19)", () => {
+  it.effect("sends the models chain and only parameters every model supports, and reports who answered", () =>
+    Effect.gen(function*() {
+      const seen: Array<any> = []
+      const http = Layer.succeed(HttpClient.HttpClient, HttpClient.make((req) => Effect.sync(() => {
+        if (req.url.endsWith("/models")) {
+          return HttpClientResponse.fromWeb(req, Response.json({ data: [
+            { id: "test/grader", supported_parameters: ["response_format", "reasoning"] },
+            { id: "test/fallback", supported_parameters: ["response_format", "reasoning", "temperature"] }
+          ] }))
+        }
+        seen.push(JSON.parse(new TextDecoder().decode((req.body as any).body)))
+        return HttpClientResponse.fromWeb(req, Response.json({ model: "test/fallback", choices: [{ message: { content: "{}" } }] }))
+      })))
+      const res = yield* Effect.gen(function*() {
+        return yield* (yield* ModelClient).complete({ ...request, fallbackModels: ["test/fallback"] })
+      }).pipe(Effect.provide(OpenRouterModelLive.pipe(Layer.provide([http, testConfig()]))))
+      expect(seen[0].models).toEqual(["test/grader", "test/fallback"])
+      expect(seen[0].temperature).toBeUndefined() // only the fallback supports it
+      expect(seen[0].reasoning).toEqual({ effort: "low" })
+      expect(res.model).toBe("test/fallback")
+    }))
+})
+

@@ -10,6 +10,8 @@ import { AppConfig } from "../AppConfig.ts"
  */
 export interface ModelRequest {
   readonly model: string
+  /** OpenRouter routes to these, in order, if the primary fails (its `models` fallback list). */
+  readonly fallbackModels?: ReadonlyArray<string> | undefined
   readonly system: string
   readonly text: string
   readonly imagePng?: Uint8Array | undefined
@@ -21,6 +23,8 @@ export interface ModelRequest {
 }
 
 export interface ModelResponse {
+  /** The model that actually answered: the primary, or a fallback. */
+  readonly model: string
   readonly content: string
   readonly inputTokens: number | null
   readonly outputTokens: number | null
@@ -99,6 +103,7 @@ export const fetchCatalog = (http: HttpClient.HttpClient, baseUrl: string) =>
   )
 
 const ChatResponse = Schema.Struct({
+  model: Schema.optional(Schema.String),
   choices: Schema.optional(Schema.Array(Schema.Struct({
     message: Schema.Struct({ content: Schema.NullOr(Schema.String) })
   }))),
@@ -145,8 +150,10 @@ export const buildBody = (request: ModelRequest, supported: ReadonlySet<string> 
     { role: "user", content: userContent }
   ]
   if (request.correction !== undefined) messages.push({ role: "user", content: request.correction })
+  const fallbacks = request.fallbackModels ?? []
   return {
     model: request.model,
+    ...(fallbacks.length > 0 ? { models: [request.model, ...fallbacks] } : {}),
     messages,
     ...(supported?.has("temperature") ? { temperature: 0 } : {}),
     // Grading is a judgment over a short transcription, not a hard proof: keep reasoning cheap.
@@ -181,7 +188,14 @@ export const OpenRouterModelLive = Layer.effect(
       if (Option.isNone(config.model.apiKey)) {
         return yield* new ModelError({ kind: "not_configured", message: "OPENROUTER_API_KEY is not set" })
       }
-      const supported = (yield* catalog).get(request.model)?.supportedParameters
+      // With fallbacks, send only parameters EVERY model in the chain supports.
+      const known = yield* catalog
+      const supported = [request.model, ...(request.fallbackModels ?? [])]
+        .map((m) => known.get(m)?.supportedParameters)
+        .reduce<ReadonlySet<string> | undefined>(
+          (acc, s) => acc === undefined || s === undefined ? undefined : new Set([...acc].filter((p) => s.has(p))),
+          known.get(request.model)?.supportedParameters
+        )
       const started = Date.now()
       const elapsed = () => Date.now() - started
       const httpRequest = HttpClientRequest.post(`${config.model.baseUrl}/chat/completions`).pipe(
@@ -227,6 +241,7 @@ export const OpenRouterModelLive = Layer.effect(
         })
       }
       return {
+        model: body.model ?? request.model,
         content,
         inputTokens: body.usage?.prompt_tokens ?? null,
         outputTokens: body.usage?.completion_tokens ?? null,

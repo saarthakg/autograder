@@ -21,6 +21,7 @@ export const testConfig = (
         apiKey: Option.some(Redacted.make("test-key")),
         baseUrl: "https://model.test/api/v1",
         gradingModel: "test/grader",
+        gradingFallbackModels: [],
         rubricModel: "test/rubric",
         timeout: Duration.seconds(5),
         budgetFloorUsd: 5,

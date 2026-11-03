@@ -20,7 +20,7 @@ const run = (answers: Array<string>) =>
     const model = Layer.succeed(ModelClient, ModelClient.of({
       complete: (req) => Effect.sync(() => {
         requests.push(req)
-        return { content: answers[requests.length - 1] ?? "{}", inputTokens: 300, outputTokens: 250, costUsd: 0.002, latencyMs: 1500, httpStatus: 200 }
+        return { model: req.model, content: answers[requests.length - 1] ?? "{}", inputTokens: 300, outputTokens: 250, costUsd: 0.002, latencyMs: 1500, httpStatus: 200 }
       })
     }))
     const guard = Layer.succeed(BudgetGuard, BudgetGuard.of({ remaining: Effect.succeed(Option.none()), check: () => Effect.void }))

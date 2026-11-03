@@ -80,6 +80,7 @@ const EvalConfig = Layer.effect(
         apiKey: Option.filter(apiKey, (k) => Redacted.value(k) !== ""),
         baseUrl: baseUrl.replace(/\/$/, ""),
         gradingModel: DEFAULT_CHEAP[0]!,
+        gradingFallbackModels: [], // the eval measures each model alone
         rubricModel: "unused",
         timeout: Duration.seconds(90),
         budgetFloorUsd
