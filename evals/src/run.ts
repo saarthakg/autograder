@@ -18,7 +18,7 @@ import { EVAL_CASES, instructionHash, SAMPLE_PROBLEMS } from "@autograder/domain
 import { BunRuntime, BunServices } from "@effect/platform-bun"
 import { Config, Data, Duration, Effect, Layer, Option, Redacted, Ref } from "effect"
 import { FetchHttpClient, HttpClient } from "effect/http"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { AppConfig } from "../../apps/server/src/AppConfig.ts"
 import { Grader } from "../../apps/server/src/grading/Grader.ts"
@@ -96,6 +96,18 @@ const EvalConfig = Layer.effect(
   })
 )
 
+const median = (xs: ReadonlyArray<number | null>) => {
+  const v = xs.filter((x): x is number => x !== null).sort((a, b) => a - b)
+  return v.length === 0 ? 0 : v[Math.floor(v.length / 2)]!
+}
+
+/** Per-model measured token usage from the most recent run, if any. */
+const latestCalibration = (): Record<string, { inputTokens: ReadonlyArray<number | null>; outputTokens: ReadonlyArray<number | null> }> => {
+  const runs = existsSync(RESULTS) ? readdirSync(RESULTS).filter((d) => existsSync(`${RESULTS}/${d}/calibration.json`)).sort() : []
+  const last = runs[runs.length - 1]
+  return last === undefined ? {} : JSON.parse(readFileSync(`${RESULTS}/${last}/calibration.json`, "utf8"))
+}
+
 class EvalError extends Data.TaggedError("EvalError")<{ readonly message: string }> {}
 
 interface Task {
@@ -151,12 +163,18 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
 
   // --- projection, printed before anything runs ------------------------------
   const callsPerModel = projectedCases * k
-  const perCall = (i: ModelInfo) =>
-    ((EST_TEXT_TOKENS + EST_IMAGE_TOKENS) * i.promptPrice + EST_OUTPUT_TOKENS * i.completionPrice) * RETRY_FACTOR * SAFETY_FACTOR
+  // Use measured token medians from the latest run's calibration.json when we have them for a model.
+  const measured = latestCalibration()
+  const perCall = (i: ModelInfo) => {
+    const m = measured[i.id]
+    const tokensIn = m ? median(m.inputTokens) : EST_TEXT_TOKENS + EST_IMAGE_TOKENS
+    const tokensOut = m ? median(m.outputTokens) : EST_OUTPUT_TOKENS
+    return (tokensIn * i.promptPrice + tokensOut * i.completionPrice) * RETRY_FACTOR * SAFETY_FACTOR
+  }
   const projected = infos.map((i) => ({ model: i.id, role: i.id === reference ? "reference" : "cheap", perCall: perCall(i), total: perCall(i) * callsPerModel, i }))
   const projectedTotal = projected.reduce((s, p) => s + p.total, 0)
   console.log(`\nProjected cost: ${projectedCases} cases × k=${k} × ${models.length} models = ${callsPerModel * models.length} grades`)
-  console.log(`  (estimate: ${EST_TEXT_TOKENS + EST_IMAGE_TOKENS} in / ${EST_OUTPUT_TOKENS} out tokens per call, ×${RETRY_FACTOR} retries, ×${SAFETY_FACTOR} safety)`)
+  console.log(`  (tokens per call: measured medians from the last run where available, else ${EST_TEXT_TOKENS + EST_IMAGE_TOKENS} in / ${EST_OUTPUT_TOKENS} out; ×${RETRY_FACTOR} retries, ×${SAFETY_FACTOR} safety)`)
   for (const p of projected) {
     console.log(`  ${p.model.padEnd(36)} ${p.role.padEnd(9)} $${(p.i.promptPrice * 1e6).toFixed(3)}/M in  $${(p.i.completionPrice * 1e6).toFixed(3)}/M out  ~${usd(p.perCall)}/grade  ~${usd(p.total)}`)
   }
