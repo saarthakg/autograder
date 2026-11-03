@@ -21,9 +21,10 @@ Prices and versions were checked on 2026-11-02:
                                                                       prod: OpenRouter   loadtest: fake-llm (OpenAI-compatible)
 ```
 
-- **One deployable** (`apps/server`):
-  - It serves the API, the built web app and the grading worker.
-  - `ROLE` decides which parts start, so workers can scale on their own later without a second codebase (P21, D-12).
+- **One image, two Cloud Run services** (`apps/server`):
+  - `ROLE=api` serves the API and the built web app. It's request-billed and autoscaled.
+  - `ROLE=worker` runs the grading worker. It's instance-billed, always on, and woken by the API (D-27).
+  - `ROLE=all` runs both, for local dev.
 - **Submit is accept-and-queue.** `POST /submissions` validates the request, then inserts the `submission` row and its `grading_job` row in one transaction and returns `202`. The student never waits on the model (P8, P22, P24).
 - **Workers** claim jobs with `FOR UPDATE SKIP LOCKED`:
   - Each claim sets a lease (`lease_until`). The model call happens outside the claim transaction.
@@ -44,14 +45,14 @@ Prices and versions were checked on 2026-11-02:
 | `rubric` | (problem_id, version) PK, items jsonb, reference_solution, source `generated\|edited\|sample`, model, prompt_version, created_at | Append-only: edits create a new version (P3). |
 | `student` | id, assignment_id, display_name, rejoin_code, token_hash, created_at | unique(assignment_id, rejoin_code). Names never go to the model (P2). |
 | `submission` | id, student_id, problem_id, attempt, idempotency_key (unique), strokes jsonb, image bytea (nullable), status `queued\|grading\|graded\|needs_review`, accepted_at, graded_at, run_id (nullable) | unique(student_id, problem_id, attempt). The image is purged once the submission is terminal (D-13). |
-| `grading_job` | id, submission_id (unique), status `queued\|running\|done\|dead`, attempts, run_after, lease_until, claimed_at, last_error, run_id | Partial index on `(run_after) WHERE status='queued'` for the claim query. |
+| `job` | id, kind, payload jsonb, dedupe_key (unique), status `queued\|running\|done\|dead`, attempts, max_attempts, run_after, lease_until, claimed_at, finished_at, last_error, run_id | Generic queue (D-12). Grading uses `dedupe_key = 'grade:'‖submission_id`. Partial index on `(run_after) WHERE status='queued'` for the claim query. |
 | `grade` | id, submission_id, rubric_version, model, prompt_version, transcription, legible, confidence, verdicts jsonb, total_points (code-computed), model_started_at, model_finished_at, created_at | unique(submission_id, rubric_version). |
 | `model_call` | id, purpose `grade\|rubric\|eval\|canary`, job_id (nullable), model, status, http_status, error_kind, input_tokens, output_tokens, cost_usd, latency_ms, run_id, created_at | Ledger for every call, including failures. It feeds the budget guard, cost accounting and 429/error rates (D-15). |
 | `override` | id, grade_id, criterion_id, met (bool), created_at | Teacher corrections stored as labeled data (P4). Code recomputes the effective total. |
 
 The lifecycle timestamps P26 asks for are covered by this schema:
 - `accepted_at` on `submission`
-- `claimed_at` on `grading_job`
+- `claimed_at` on `job`
 - `model_started_at` and `model_finished_at` on `grade`
 - `graded_at` on `submission`
 
@@ -322,25 +323,16 @@ export default {
 - In `spike`, about 3,000 first-problem submits land within about 3 minutes, roughly 17 submits/s and about 100 calls in flight.
 - Default `MODEL_CONCURRENCY` is 32 per worker, so `spike` is *meant* to build a queue. What we measure is how fast it drains (P24).
 
-## 9. Hosting (D-20): $0
+## 9. Hosting (D-20 with amendments A1–A8, D-27): $0
 
-| Piece | Choice | Cost | Notes |
-|---|---|---|---|
-| prod app | Cloud Run `autograder`, `us-east4`. Instance-based billing (CPU always allocated so the worker runs), min 1 / max 3 instances, 1 vCPU / 512 MiB | about $50/mo of trial credit, $0 billed | Always on, no cold starts. Serves the API, the web app and the worker. |
-| loadtest app | Cloud Run `autograder-loadtest`: same image, `MODEL_BASE_URL=fake-llm`, Neon `loadtest` branch. Min 0; the runner raises the minimum during a run | a few dollars of credit per month | Only config differs from prod (P28). |
-| fake-llm | Cloud Run `fake-llm`, request-based billing, high per-instance concurrency | pennies of credit | Mostly sleeping, which is cheap. |
-| Postgres | Neon Free: `main` (prod) and `loadtest` branches, AWS us-east-1 | $0, no card | 100 CU-hours a month, autoscales to 2 CU, sub-second wake from autosuspend, pooler handles 10k clients. Each run starts with a warm-up query. |
-| Images, secrets | Artifact Registry and Secret Manager | trial credit | |
-| CI | GitHub Actions | $0 | Deploys through Workload Identity Federation, so no long-lived key is stored. |
+| Piece | Choice | Notes |
+|---|---|---|
+| prod API | Cloud Run `autograder-api`, `us-east4`, request-based billing, min 0, max-instances capped | Scales out under load. Pays a 1–2 s cold start after idle. |
+| prod worker | Cloud Run `autograder-worker`, instance-based billing, min = max = 1 | Always on. The API wakes it after enqueueing. Idle, it sleeps until the next `run_after`/lease expiry or a 60-min safety poll, so Neon can scale to zero. |
+| loadtest | `autograder-loadtest-api` and `-worker`: same image, `MODEL_BASE_URL=fake-llm` | Min 0 when idle; the runner raises it for a run. |
+| fake-llm | Cloud Run `fake-llm`, request-based billing, min 0 | |
+| Postgres | Neon Free: **two projects**, `autograder-prod` and `autograder-loadtest`, AWS us-east-1 | Pooled URLs for the app, direct URLs for migrations. Cold start after 5 min idle is accepted (A5). |
+| Images, secrets | Artifact Registry and Secret Manager | |
+| CI | GitHub Actions | |
 
-**Guarantees and limits:**
-- A GCP Free Trial billing account can't be charged unless someone manually upgrades it. Your card is only used to verify identity.
-- The $300 credit lasts 90 days. When it ends, resources stop, so the deployment covers the review window. Moving off is a config change to the same container.
-- A budget alert at $100 of credit used is there as a sanity check.
-
-**Setup you'll need to do (Phase 1):**
-1. Create a GCP project on a Free Trial billing account.
-2. Run `! gcloud auth login`.
-3. Create a Neon account (GitHub login, no card) and a project, and put its two connection strings in `.env`.
-
-I'll script everything else: enabling APIs, Artifact Registry, Secret Manager, the Cloud Run services and CI deploys.
+The credit-burn estimate is in the Phase 1 report and `ops/README.md`.

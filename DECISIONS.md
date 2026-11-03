@@ -53,7 +53,7 @@ Status values:
   - Upload-and-extract is a great time-to-magic feature, but it's a separate model pipeline with its own eval. It stays a stretch item listed in the README.
   - Integer points keep rubric math exact.
 - **Refs:** P3, §6
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-04 ★ Identity and cross-device persistence without auth
 - **Context:** The brief asks for no email auth, and data has to persist across devices.
@@ -70,7 +70,7 @@ Status values:
   - The risk is named: anyone with the teacher link has access. That's acceptable for a free growth product and documented.
   - A new `teacher` table adds one row of complexity and buys a teacher home page. The rejected alternative, a separate link per assignment, leaves teachers with N links and no home.
 - **Refs:** P1, P2, P7
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-05 What "progress" means in the report
 - **Decision:** The report is a students × problems grid that refreshes live. Each cell is one of:
@@ -88,7 +88,7 @@ Status values:
   - the line "84 graded, 6 worth a look"
 - **Why:** The report should answer "what do I do tomorrow?", not just list grades. Everything in it comes from data we already store.
 - **Refs:** P5, P6
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-06 ★ Honest states when grading fails or is unsure
 - **Decision:**
@@ -101,7 +101,7 @@ Status values:
   - Holding every low-confidence score would make the student-facing experience depend on a confidence signal that isn't calibrated yet.
   - The eval measures whether `low` predicts errors. If it does, we tighten the rule to hold `low` too (D-19).
 - **Refs:** P9, P5, P18
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-07 Budget: the key's limit is $50, verified, not assumed
 - **Context:** The brief says $20, and the email with the key says $50.
@@ -128,7 +128,7 @@ Status values:
   - Seeing a rubric appear is part of the magic moment.
   - Quality matters more here, because every grade inherits the rubric.
 - **Refs:** P3, P1
-- **Status:** Proposed. The model is chosen in Phase 2.
+- **Status:** Accepted. The model is chosen in Phase 2.
 
 ### D-09 One-click sample assignment with pre-written rubrics
 - **Decision:** "Try a sample" creates an Algebra 1 assignment using the four eval problems and their reviewed gold rubrics. It makes **no model call**, so it's instant and free.
@@ -136,7 +136,7 @@ Status values:
   - The fastest path to a class code. Time-to-magic is about 20 s.
   - Showing teachers the rubric the eval proved is better than showing a fresh, unchecked one.
 - **Refs:** P1, P10
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-10 Editing a rubric after grades exist
 - **Decision:**
@@ -144,7 +144,7 @@ Status values:
   - The report flags "graded with an earlier rubric".
   - "Re-grade affected" is a stretch item (P19).
 - **Refs:** P3, P19
-- **Status:** Proposed
+- **Status:** Accepted
 
 ## Grading engine
 
@@ -162,7 +162,10 @@ Status values:
   - A self-reported confidence *number* is rarely calibrated, so three categories are more honest and easy to rank by.
   - Revisit if the eval shows teachers need within-criterion partial credit.
 - **Refs:** P13, P14, P5
-- **Status:** Proposed. This narrows P13's options, so **needs your OK**.
+- **Conditions (Saarthak, 2026-11-02):**
+  1. The rubric generator must produce **atomic, independently checkable** criteria: each one is a single fact a grader can verify on its own, never "sets up and solves". `rubric.v1.md` asks for this, and the eval checks generated rubrics against it.
+  2. A criterion can be worth **more than 1 point**. The weight lives in `rubric.points`, and code applies it: total = Σ points of met criteria. The model still never sees weights.
+- **Status:** Accepted with the two conditions above.
 
 ### D-12 ★ Async grading on a Postgres queue
 - **Decision:**
@@ -175,6 +178,10 @@ Status values:
   - **Provider concurrency is a global budget.** Cloud Run runs several instances (D-20), so a per-process `Semaphore` alone would let N instances × K calls overrun the provider. The claim query also checks the number of unexpired leases against `MODEL_MAX_IN_FLIGHT`. Each process keeps a local `Semaphore` as well.
     - Concurrent claims can overshoot the global cap by at most one job per instance.
     - If the load test shows that matters, the claim takes a transaction-scoped advisory lock (`pg_advisory_xact_lock`) to make the cap exact.
+  - **Generic `job` table instead of `grading_job`.** Columns: `kind`, `payload`, `dedupe_key UNIQUE`.
+    - Grading jobs use `dedupe_key = 'grade:' || submission_id`, which gives the same idempotency as a unique `submission_id`.
+    - Phase 1 uses an `echo` job kind to prove the deployed worker end to end before grading exists.
+    - It costs one column and adds no new table.
 - **Why:**
   - The student never waits (P8).
   - A spike shows up as queue depth, not as errors (P24).
@@ -182,7 +189,7 @@ Status values:
   - Rejected: Redis or SQS, because it's another service to run and its state lives outside Postgres.
   - Where this stops scaling is covered in LOADTEST.md.
 - **Refs:** P8, P22, P23, P24
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-13 Image pipeline: strokes are the source of truth
 - **Decision:**
@@ -194,7 +201,7 @@ Status values:
   - The same render function produces the eval fixtures.
   - Purging keeps a free-tier database small under load tests.
 - **Refs:** P12, P16
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-14 Model client: a thin wrapper over `HttpClient`, checked against `@effect/ai-openrouter`
 - **Decision:** The plan is a roughly 150-line `ModelClient` service built on `effect/http`'s `HttpClient`, with OpenAI-compatible chat completions and a configurable base URL. In Phase 2, before building it, check whether `@effect/ai-openrouter@4.1.2` exposes:
@@ -206,13 +213,13 @@ Status values:
   If it exposes all four cleanly, use it instead.
 - **Why:** We need direct control over cost accounting, error classification (402 vs 429 vs 5xx) and the base-URL swap to fake-llm. A generic `LanguageModel` abstraction may hide those.
 - **Refs:** P21, P25, §5
-- **Status:** Proposed. To be verified by a Phase 2 spike.
+- **Status:** Accepted. To be verified by a Phase 2 spike.
 
 ### D-15 `model_call` ledger table
 - **Decision:** Add a `model_call` table that records every call, including failed ones: purpose, model, status, tokens, cost, latency and error kind.
 - **Why:** `grade` stores only successful calls. The budget guard, 429 rates and the cost per grade all need failed calls too. The simpler option, logs only, can't be queried after a load test.
 - **Refs:** P25, P26
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-16 Effect reference: canonical `Effect-TS/effect` at 4.1.2, not effect-smol
 - **Context:** The principles say to clone `Effect-TS/effect-smol`. That repo has been archived since July 2026 at 4.0.0-beta.98, and its README says v4 moved to `Effect-TS/effect`. npm `effect@latest` is 4.1.2.
@@ -237,7 +244,7 @@ Status values:
   - Per-criterion ground truth, approved by Saarthak.
   - The same fixtures become load-test payloads.
 - **Refs:** P17, P30
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-19 ★ Model choice is the cheapest model that clears an agreed bar
 - **Decision:**
@@ -252,7 +259,14 @@ Status values:
   - Pick the cheapest model that passes. Build the cascade only if the eval shows `low` confidence is calibrated (P18).
   - Projected cost about $0.60, worst case about $1.20.
 - **Refs:** P17, P18
-- **Status:** Proposed. **The bar needs your approval.**
+- **Amendments (Saarthak, 2026-11-02):**
+  - Every metric is reported with a **Wilson 95% confidence interval**. With about 36 cases, a 3% gate comes down to a single case, so the point estimate alone overstates certainty.
+  - **False-full-credit rate** is computed only over gold cases whose true score is *not* full credit. The false-zero rate likewise uses only gold cases whose true score is not 0.
+  - **Self-consistency gate:** across 3 runs, the total score changes in **≤ 5%** of cases.
+  - **Abstention:** abstaining (`legible: false`) on work the gold set marks illegible counts as **correct**. Abstaining on legible work counts as an error, reported separately as the false-abstention rate.
+  - The **strong reference model always appears** beside the cheap ones in every table and chart.
+  - **If no cheap model clears the bar**, pick the best one, say so plainly in the README, and list the gates it misses.
+- **Status:** Accepted with the amendments above.
 
 ## Infra and load testing
 
@@ -261,13 +275,14 @@ Status values:
 - **Decision:**
   - **Compute:** Google Cloud Run on a GCP **Free Trial** billing account. It has $300 of credit for 90 days, and Google's FAQ says you are not charged unless you manually upgrade.
   - **Region:** `us-east4`.
-  - **Services**, all running the same container image except fake-llm:
+  - **Services** (amended by A2). Every service except fake-llm runs the same container image, with `ROLE` choosing what it does:
     | Service | Config | Purpose |
     |---|---|---|
-    | `autograder` | prod, instance-based billing (CPU always allocated so worker fibers run), min 1 / max 3 instances, 1 vCPU / 512 MiB. About $50 a month of credit. | No cold starts for reviewers. |
-    | `autograder-loadtest` | Same image. `MODEL_BASE_URL` points at fake-llm and it uses the Neon `loadtest` branch. Min 0; the load-test runner raises the minimum during a run and resets it afterwards. | Load testing (P28). |
-    | `fake-llm` | Request-based billing, high per-instance concurrency. It mostly sleeps. | Simulated model provider. |
-  - **Database:** Neon Free. No card. A `main` branch for prod and a `loadtest` branch, in AWS us-east-1, a few milliseconds from `us-east4`.
+    | `autograder-api` | prod, `ROLE=api`. Request-based billing, min 0, autoscaled, max-instances capped. | Teacher/student API and static web app. Pays a 1–2 s cold start after idle. |
+    | `autograder-worker` | prod, `ROLE=worker`. Instance-based billing, min = max = 1 (D-27). | Always-on grading worker. |
+    | `autograder-loadtest-api` / `autograder-loadtest-worker` | Same image. `MODEL_BASE_URL` points at fake-llm, using the `autograder-loadtest` Neon project. Min 0 when idle; the runner raises it during a run. | Load testing (P28). |
+    | `fake-llm` | Request-based billing, high per-instance concurrency, min 0. | Simulated model provider. |
+  - **Database:** Neon Free, no card. Two **separate projects**, `autograder-prod` and `autograder-loadtest`, both in AWS us-east-1, a few milliseconds from `us-east4`. See amendment A1.
   - **Supporting services:**
     - Artifact Registry for images.
     - Secret Manager for the OpenRouter key and database URLs.
@@ -284,11 +299,45 @@ Status values:
   - **Oracle Always Free VM:** ARM capacity is often out of stock, VMs idle for 7 days get reclaimed, and the load test would share a box with prod.
   - **Fly.io:** no free tier, so it would cost about $6–12 a month.
 - **Consequences:**
-  - Prod scales **horizontally**: Cloud Run adds instances under load. That makes provider concurrency a *global* budget, which D-12 now enforces in Postgres.
+  - The API scales **horizontally**: Cloud Run adds instances under load. That makes provider concurrency a *global* budget, which D-12 enforces in Postgres.
   - Resources stop when the trial ends, about 90 days out. That covers the review period. Moving afterwards is a config change (same container): Fly, or a Cloud Run account that bills.
   - Loads here are small, at most about 20 submits/s and a few hundred requests/s. Google doesn't require pre-approval to test your own services within its Acceptable Use Policy (secondary sources; no official page found).
 - **Refs:** P27, P28
-- **Status:** Accepted (Saarthak chose Cloud Run, 2026-11-02)
+- **Amendments (Saarthak, 2026-11-02):**
+  - **A1. Two Neon projects, not branches.** Free-tier compute hours (100 CU-hours) and network transfer (5 GB) are limits *per project*. Separate projects stop a load test from using up prod's quota.
+    - Each project has a pooled URL for the app (`DATABASE_URL`, `LOADTEST_DATABASE_URL`) and a direct URL for migrations (`DATABASE_URL_DIRECT`, `LOADTEST_DATABASE_URL_DIRECT`).
+    - No Neon CLI or MCP tooling.
+  - **A2. API and worker are separate Cloud Run services.**
+    - Cloud Run gives a request-billed instance CPU only while it serves a request, so a background loop there would stall.
+    - The API (`ROLE=api`) is a request-based, autoscaled service.
+    - The worker (`ROLE=worker`) is a **service with instance-based billing, min = max = 1** (D-27 explains why this beats a worker pool).
+    - Verification: after 20+ minutes with no HTTP traffic, the worker must still be alive and pick up a job promptly.
+  - **A3. SIGTERM and leases.** Cloud Run sends SIGTERM and allows about 10 s.
+    - On shutdown the worker stops claiming new jobs and gives in-flight calls up to about 8 s to finish. Anything still running is left to its lease, which expires and gets re-queued by the next worker.
+    - The `chaos` scenario kills an instance mid-job and checks that nothing is lost.
+  - **A4. Pooled connections for the app, direct for migrations.**
+    - The app uses Neon's pooled string, which is PgBouncer in transaction mode.
+    - Every queue operation is a **single SQL statement**, so `SKIP LOCKED` claims don't depend on holding a session. Session-level advisory locks, `LISTEN/NOTIFY` and `SET` aren't used. That pooled-string behaviour is checked against the real Neon pooler, not just local Postgres.
+    - Migrations run over the direct string.
+  - **A5. Neon cold start is accepted.**
+    - Neon Free suspends compute after 5 minutes idle, and this can't be turned off.
+    - Keep-warm pings would use up the 100 CU-hours: 0.25 CU × 730 h is about 182 CU-hours.
+    - So the first request after an idle period pays a wake-up of roughly 0.5–2 s, and the worker is designed *not* to keep the database awake (D-27).
+    - Load tests start with an explicit warm-up and report whether cold start falls inside the measured window.
+  - **A6. 5 GB/month network-transfer budget per project.**
+    - Strokes are the durable record. PNGs are small: grayscale, cropped, about 20–40 KB, and purged after grading.
+    - Load tests use small fixture images and clean up by `run_id`.
+    - Each load-test report estimates bytes transferred per run.
+  - **A7. Free-tier ceilings are named as such.** If the breakpoint test hits Neon's 2 CU ceiling first, LOADTEST.md says it's a free-tier limit, not a design limit, and what a paid tier would change.
+  - **A8. Credit guardrails.**
+    - Projected 90-day credit burn stays under $150, estimated before the first deploy.
+    - A $50 budget alert acts as a tripwire.
+    - Every service has `max-instances` capped.
+    - `autograder-loadtest` and `fake-llm` sit at min instances 0 when idle.
+    - Region `us-east4`.
+    - Secrets live in Secret Manager.
+    - The billing account is never upgraded.
+- **Status:** Accepted with amendments A1–A8.
 
 ### D-21 Load generator: custom Bun + Effect open model, not k6
 - **Decision:**
@@ -300,7 +349,7 @@ Status values:
   - It reuses the domain schemas and fixtures, and needs no extra binary in CI.
   - The usual risk of a home-grown generator, its own bottleneck, is measured and gated.
 - **Refs:** P30, P31
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-22 ★ SLOs, and the verdict they produce
 - **Decision:** PLAN §8 values:
@@ -314,13 +363,13 @@ Status values:
 
   Each run reports PASS / FAIL / INVALID per SLO.
 - **Refs:** P32
-- **Status:** Proposed. **Needs your agreement.**
+- **Status:** Approved in principle. **Final values go to Saarthak before the first load-test run.** They must cover: the zero-lost invariant checked against the DB; submit p99; time-to-grade p95 at an expected load stated in classes and students; drain time after a spike; `needs_review` rate with a healthy provider; and whether Neon cold start is inside the measurement.
 
 ### D-23 Calibration canary runs against prod with a synthetic tenant
 - **Decision:** About 50 real-model submissions through the deployed prod path, tagged with a `run_id` and cleaned up afterwards, behind the budget guard. Projected cost $0.02–0.05.
 - **Why:** It exercises exactly the code and network path that the simulator is standing in for. Rejected: briefly re-pointing the loadtest environment at OpenRouter, because that's a config flip that's easy to leave on.
 - **Refs:** P29
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-24 Polling with backoff and ETags, not SSE or websockets
 - **Decision:**
@@ -332,7 +381,7 @@ Status values:
   - The load test models polling explicitly, because at scale reads outnumber submits.
   - SSE is the documented next step, and a sync engine is what Goblins already has.
 - **Refs:** §5 real-time, P11
-- **Status:** Proposed
+- **Status:** Accepted
 
 ### D-25 Tests: `@effect/vitest` plus a real Postgres
 - **Decision:**
@@ -343,4 +392,33 @@ Status values:
   - SKIP LOCKED and lease semantics can't be mocked honestly.
   - `@effect/vitest` buys `it.effect` and `TestClock`, which is one dev dependency's worth.
 - **Refs:** W4
-- **Status:** Proposed
+- **Status:** Accepted
+
+### D-26 Plain `.sql` migration files, run by Effect's migrator
+- **Decision:** Migrations live in `apps/server/migrations/NNNN_name.sql`. A small loader reads them into `Migrator.fromRecord`, so Effect's `PgMigrator` handles ordering, locking and the migrations table.
+- **Why:**
+  - Effect's built-in file loader only imports `.ts`/`.js` modules.
+  - Plain SQL is what a reviewer expects to read in a schema history, and it's what the principles' §5 asks for.
+- **Status:** Accepted
+
+### D-27 ★ Worker: a Cloud Run service with instance-based billing (min = max = 1), woken by the API
+- **Context:** Amendment A2 to D-20 needs an always-running worker. The two Cloud Run options are an instance-based service and a worker pool.
+- **Decision:** An instance-based **service**. CPU is always allocated, min and max are both 1, it uses 0.5–1 vCPU, and it exposes `POST /internal/wake` (bearer token).
+- **How the worker runs:**
+  - After committing a job, the API sends the worker a fire-and-forget wake request.
+  - When idle, the worker sleeps until the earliest of:
+    - a wake request
+    - the next `run_after`, for retries with backoff
+    - the next `lease_until`, to recover crashed jobs
+    - a 60-minute safety poll
+- **Why not a worker pool:**
+  - A worker pool has no HTTP ingress, so it can only learn about new work by **polling Postgres**.
+  - Polling more often than every 5 minutes keeps Neon awake around the clock: about 182 CU-hours a month at 0.25 CU, against a free allowance of 100.
+  - Polling less often makes students wait minutes for a score.
+  - A woken service gives instant pickup *and* lets Neon scale to zero.
+  - Same container, same billing model.
+- **Wake failures:**
+  - A lost wake isn't a lost job. The job is already committed, and the timed poll or the lease sweep picks it up.
+  - The wake only changes *latency*, never correctness.
+- **Refs:** P22, P24, D-20 A2/A5
+- **Status:** Accepted
