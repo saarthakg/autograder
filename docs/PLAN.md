@@ -18,13 +18,10 @@ Prices and versions were checked on 2026-11-02:
  polls with backoff)     │  /api/*  /internal/*   job in one tx    claim + lease    timeout, retry)  │            │
                          └─────────────────────────────────────────────────────────────────────────┼────────────┘
                                                                                                     ▼
-                                                                      prod: OpenRouter   loadtest: fake-llm (OpenAI-compatible)
+                                                                      real assignments: OpenRouter   simulated (load-test) assignments: in-process simulator
 ```
 
-- **One image, two Cloud Run services** (`apps/server`):
-  - `ROLE=api` serves the API and the built web app. It's request-billed and autoscaled.
-  - `ROLE=worker` runs the grading worker. It's instance-billed, always on, and woken by the API (D-27).
-  - `ROLE=all` runs both, for local dev.
+- **One deployable, one process** (`apps/server`, D-28): the API, the built web app and the grading worker run together. Submits ring the in-process worker directly.
 - **Submit is accept-and-queue.** `POST /submissions` validates the request, then inserts the `submission` row and its `grading_job` row in one transaction and returns `202`. The student never waits on the model (P8, P22, P24).
 - **Workers** claim jobs with `FOR UPDATE SKIP LOCKED`:
   - Each claim sets a lease (`lease_until`). The model call happens outside the claim transaction.
@@ -33,7 +30,7 @@ Prices and versions were checked on 2026-11-02:
 - **The model judges, code computes.**
   - The model returns a transcription, a legibility flag, a confidence and per-criterion verdicts.
   - Code validates the response against a Schema, sums the points from the rubric and picks the status (P13).
-- **The only prod/loadtest difference is config.** `MODEL_BASE_URL` points at OpenRouter in prod and at `fake-llm` in loadtest, and each environment has its own database branch (P28).
+- **Real vs simulated is per assignment, not per environment (D-28).** Assignments created with the admin token are flagged `simulated`, and their jobs use the in-process `SimulatedModel`. Everything else uses OpenRouter.
 
 ## 2. Data model (Postgres, plain SQL migrations)
 
@@ -92,7 +89,7 @@ Auth is a bearer capability: `Authorization: Bearer <teacher secret | student to
 **Ops**
 - `GET /health`: liveness and a DB ping.
 - `GET /internal/metrics`, token-protected: queue depth, age of the oldest job, model calls in flight, error and 429 rates over the last minute, and pool usage (P26).
-- `POST /internal/runs` and `DELETE /internal/runs/:runId`, admin token, loadtest environment only: create and clean up synthetic tenants.
+- `POST /internal/runs` and `DELETE /internal/runs/:runId`, admin token: create simulated load-test assignments and delete a run's data.
 
 ## 4. File layout (adapts the principles' §5)
 
@@ -103,7 +100,6 @@ apps/server/        Effect HTTP API, worker, sweeper, migrations/ (plain .sql)
   src/queue/        claim / lease / sweeper / retry policy
   src/db/           SqlClient layer, repositories
 apps/web/           React + Vite SPA (teacher + student), whiteboard on perfect-freehand
-apps/fake-llm/      OpenAI-compatible simulator (Bun + Effect)
 packages/domain/    Shared Effect Schemas: Rubric, GradeOutput, API bodies, scoring helpers
 prompts/            grade.v1.md, rubric.v1.md (versioned, loaded by name@version)
 evals/              fixtures/ (strokes + PNG + ground truth), runner, results/
@@ -244,9 +240,7 @@ We pick the **cheapest model that clears every line**. If none does, the referen
 
 ## 8. Load-test plan (`loadtest/`, P28–P33)
 
-**Target:** the deployed `autograder-loadtest` Cloud Run service. It runs the same image as prod, uses `MODEL_BASE_URL=fake-llm` and has its own Neon branch.
-
-**Instance scaling:** Cloud Run scales the service horizontally. Each report records the instance count over the run, and the breakpoint scenario runs once with `max-instances=1`, which isolates per-instance capacity, and once with autoscaling.
+**Target:** the public `autograder` service, or `localhost` (D-28). Load-test assignments are created with the admin token, flagged `simulated`, and graded by the in-process simulator, so default runs spend $0 on models. Each report records Cloud Run's instance count where it's visible.
 
 **Generator:** a Bun + Effect script with an open arrival model (D-21).
 1. It precomputes a timeline:
@@ -271,7 +265,7 @@ We pick the **cheapest model that clears every line**. If none does, the referen
 | `testing-day` | 40 classes (1,200 students), class starts staggered across a 15-min window (bell schedules differ by school), 10 problems each | Expected scale |
 | `spike` | Whole district at 9:00: 100 classes (3,000 students) start at t = 0 and join within 60 s, so first-problem submits cluster in minutes 2–5 | Worst-case burst and drain time |
 | `breakpoint` | Ramps the submission arrival rate until an SLO fails | Output is a number: the max sustained submits/s |
-| `chaos` | `testing-day` plus a 2-min 429 storm from fake-llm, a 60-s provider outage (503s and hangs), and a worker killed mid-job | Proves no submission is lost and the backlog recovers |
+| `chaos` | `testing-day` with the instance killed mid-run (the only chaos check kept, D-28); simulator 429/5xx injection on | Proves no submission is lost and the backlog recovers |
 
 **Measured from the server's clock (P31).** After a run, an analysis step queries Postgres by `run_id`:
 - time-to-grade is `graded_at − accepted_at`
@@ -293,20 +287,14 @@ export default {
 }
 ```
 
-**fake-llm** (P29):
-- An OpenAI-compatible `/v1/chat/completions` endpoint.
-- Returns schema-valid `GradeOutput` that's deterministic for a given input (seeded by a SHA-256 hash of the request) and plausible: it reads the rubric ids from the prompt.
-- Reports realistic token usage.
-- Latency comes from a lognormal fitted to each model's eval and canary latencies, with an extra tail multiplier.
-- Fault injection is set by environment variables and `POST /admin/faults`:
-  - a concurrency cap that answers 429 with `Retry-After`
-  - an RPM cap
-  - a 5xx rate
-  - a timeout or hang rate
-  - an outage window
+**In-process simulator** (P29 as narrowed by D-28): a `SimulatedModel` implementation of the same `ModelClient` service.
+- Returns schema-valid `GradeOutput` that's deterministic per submission (seeded by a hash of its content), using the real rubric ids.
+- Reports realistic token usage, so projected real-model cost can be computed.
+- Latency comes from a lognormal fitted to measured eval and canary latencies, with a tail multiplier.
+- Configurable 429 (with `Retry-After`) and 5xx rates, plus a concurrency cap that returns 429, so retries and backoff run for real.
 
 **Calibration canary** (D-23):
-- About 50 submissions against **prod**, so the real model path runs, using a synthetic `run_id` tenant that's cleaned up afterwards.
+- About 50 submissions against the public service in a *non-simulated* load-test assignment, so the real OpenRouter path runs. Tagged with a `run_id` and cleaned up afterwards.
 - Runs at modest concurrency, behind the budget guard. Projected cost is about $0.02–0.05.
 - The report puts real and simulated latency distributions and end-to-end time-to-grade side by side, and states the gap.
 
@@ -314,7 +302,6 @@ export default {
 - `loadtest/reports/<run_id>/report.md` and `report.html` (inline charts) and `raw.json`.
 - Each report covers: config, timeline, percentiles, queue depth over time, provider errors and retries, projected real-model cost for the same load, and PASS/FAIL per SLO.
 - `bun run loadtest --scenario testing-day --classes 40 --target <url>`.
-- A GitHub Actions `workflow_dispatch` runs it against the loadtest environment and uploads the report as an artifact.
 - Default runs spend $0 on models.
 
 **First Little's-law sizing**, to be recomputed with measured numbers:
@@ -323,16 +310,13 @@ export default {
 - In `spike`, about 3,000 first-problem submits land within about 3 minutes, roughly 17 submits/s and about 100 calls in flight.
 - Default `MODEL_CONCURRENCY` is 32 per worker, so `spike` is *meant* to build a queue. What we measure is how fast it drains (P24).
 
-## 9. Hosting (D-20 with amendments A1–A8, D-27): $0
+## 9. Hosting (D-28)
 
-| Piece | Choice | Notes |
-|---|---|---|
-| prod API | Cloud Run `autograder-api`, `us-east4`, request-based billing, min 0, max-instances capped | Scales out under load. Pays a 1–2 s cold start after idle. |
-| prod worker | Cloud Run `autograder-worker`, instance-based billing, min = max = 1 | Always on. The API wakes it after enqueueing. Idle, it sleeps until the next `run_after`/lease expiry or a 60-min safety poll, so Neon can scale to zero. |
-| loadtest | `autograder-loadtest-api` and `-worker`: same image, `MODEL_BASE_URL=fake-llm` | Min 0 when idle; the runner raises it for a run. |
-| fake-llm | Cloud Run `fake-llm`, request-based billing, min 0 | |
-| Postgres | Neon Free: **two projects**, `autograder-prod` and `autograder-loadtest`, AWS us-east-1 | Pooled URLs for the app, direct URLs for migrations. Cold start after 5 min idle is accepted (A5). |
-| Images, secrets | Artifact Registry and Secret Manager | |
-| CI | GitHub Actions | |
+| Piece | Choice |
+|---|---|
+| App | One Cloud Run service `autograder` in `us-east4`: API, web app and worker in one process. `--no-cpu-throttling`, min 0, max 3. |
+| Database | Neon Free project `autograder-prod`, AWS us-east-1. Pooled URL for the app, direct URL for migrations. |
+| Secrets | Env vars at deploy time (`ops/deploy.sh`, from `.env`). |
+| Load test | Same public service. Admin-created assignments are flagged `simulated` and graded by an in-process model simulator. |
 
-The credit-burn estimate is in the Phase 1 report and `ops/README.md`.
+Earlier designs (D-20 split services, D-27 woken worker) are superseded. What they would add is listed in LOADTEST.md "next steps".

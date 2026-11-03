@@ -337,7 +337,7 @@ Status values:
     - Region `us-east4`.
     - Secrets live in Secret Manager.
     - The billing account is never upgraded.
-- **Status:** Accepted with amendments A1–A8.
+- **Status:** Superseded by D-28 (2026-11-02). Kept for the record of what was considered.
 
 ### D-21 Load generator: custom Bun + Effect open model, not k6
 - **Decision:**
@@ -366,7 +366,7 @@ Status values:
 - **Status:** Approved in principle. **Final values go to Saarthak before the first load-test run.** They must cover: the zero-lost invariant checked against the DB; submit p99; time-to-grade p95 at an expected load stated in classes and students; drain time after a spike; `needs_review` rate with a healthy provider; and whether Neon cold start is inside the measurement.
 
 ### D-23 Calibration canary runs against prod with a synthetic tenant
-- **Decision:** About 50 real-model submissions through the deployed prod path, tagged with a `run_id` and cleaned up afterwards, behind the budget guard. Projected cost $0.02–0.05.
+- **Decision:** About 50 real-model submissions through the deployed prod path, tagged with a `run_id` and cleaned up afterwards, behind the budget guard. Projected cost $0.02–0.05. Under D-28 this is the same public service; the canary simply creates a *non-simulated* load-test assignment.
 - **Why:** It exercises exactly the code and network path that the simulator is standing in for. Rejected: briefly re-pointing the loadtest environment at OpenRouter, because that's a config flip that's easy to leave on.
 - **Refs:** P29
 - **Status:** Accepted
@@ -421,4 +421,42 @@ Status values:
   - A lost wake isn't a lost job. The job is already committed, and the timed poll or the lease sweep picks it up.
   - The wake only changes *latency*, never correctness.
 - **Refs:** P22, P24, D-20 A2/A5
-- **Status:** Accepted
+- **Status:** Superseded by D-28. The worker now runs in-process with the API, so the HTTP wake path is gone. The idle-wait logic (sleep until the next due retry or lease expiry) stays.
+
+### D-28 ★ Hosting cut to the brief's minimum: one public URL, load test against it
+- **Context:** The brief needs "a publicly hosted web app", plus a load test that is re-runnable and cheap, in about 75 minutes per part. The hosting plan that grew out of P28/P29/P33 (D-20 A1–A8, D-27) didn't fit that budget, and it pulled time away from the product. It would have needed a separately deployed loadtest environment and fake-llm, a second database, split API/worker services, Secret Manager, IAM, budgets and a CI load-test workflow.
+- **Decision:**
+  - **One Cloud Run service** (`autograder`, `us-east4`) runs API, web app and grading worker in **one process**.
+    - `--no-cpu-throttling`, so the in-process worker keeps CPU after a submit request returns.
+    - min instances 0, max 3, 1 vCPU / 512 MiB.
+  - **Database:** the `autograder-prod` Neon project only. Pooled URL for the app, direct URL for migrations (run from a laptop).
+  - **Secrets:** passed as env vars at deploy time from `.env`, through a temporary env-vars file so they never appear in shell arguments.
+  - **APIs enabled:** Cloud Run and Artifact Registry only.
+  - **Load test** (Phase 4) uses an **in-process model simulator** instead of a separate deployment.
+    - Assignments created with the admin token are flagged `simulated`. Their jobs use a simulated model client with calibrated latency and 429/5xx injection. Real assignments use OpenRouter.
+    - Every load-test row carries a `run_id`, and a cleanup command deletes a run.
+    - One command, `bun run loadtest --scenario testing-day --target <url>`, works against the public URL and against localhost. It uses open-model arrivals, measures time-to-grade from DB timestamps, and reports PASS/FAIL per SLO.
+    - A small budget-guarded **real-model canary** calibrates the simulator.
+    - **One chaos check:** kill the instance mid-run and show zero lost submissions.
+- **Narrows the principles:**
+  - **P28:** the load test targets the *same* public deployment, with simulated tenants, instead of a separate loadtest environment.
+  - **P29:** the simulator is a model client inside the server process, not a separate OpenAI-compatible service. The real HTTP model client is still exercised by the canary.
+  - **P33:** re-runnable by one command; the GitHub Actions `workflow_dispatch` is cut.
+- **Trade-offs, named:**
+  - Load-test traffic shares the prod instance and database, so a run competes with real users. That's acceptable at take-home scale, and simulated rows are tagged and deleted.
+  - In-process simulation skips the HTTP hop to a provider. Network and connection-pool behaviour toward OpenRouter is covered only by the canary.
+  - Neon Free's 5-minute scale-to-zero means the first request after idle pays a cold start, and the load test warms up first.
+  - Cloud Run cold start after idle is about 1–2 s.
+- **Cost:** about $0–5 a month of trial credit. CPU is billed only while an instance is up, and instances stop after idling.
+- **Cut, listed in LOADTEST.md "next steps":**
+  - separate fake-llm deployment
+  - the loadtest Neon project
+  - API/worker split
+  - Secret Manager
+  - IAM setup
+  - budget alerts
+  - GitHub Actions load-test workflow
+  - full chaos suite
+- **Supersedes:** D-20 and D-27. Adjusts D-21 to D-23 as noted.
+- **Refs:** P28, P29, P33, §0.1 (scoping under a tight time budget)
+- **Status:** Accepted (Saarthak, 2026-11-02)
