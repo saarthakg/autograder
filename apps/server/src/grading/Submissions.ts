@@ -1,5 +1,5 @@
-import { type Strokes } from "@autograder/domain"
-import { Context, Effect, Layer, Schema } from "effect"
+import { AlreadySubmitted, InvalidSubmission, type Strokes } from "@autograder/domain"
+import { Context, Effect, Layer } from "effect"
 import { SqlClient, SqlError } from "effect/sql"
 import { JobQueue } from "../queue/JobQueue.ts"
 import { WakeSignal } from "../worker/WakeSignal.ts"
@@ -7,19 +7,6 @@ import { WakeSignal } from "../worker/WakeSignal.ts"
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 /** Cropped grayscale ink is ~20–60 KB; anything far larger is a client bug (D-13). */
 export const MAX_IMAGE_BYTES = 256 * 1024
-
-export class InvalidSubmission extends Schema.TaggedError<InvalidSubmission>()(
-  "InvalidSubmission",
-  { message: Schema.String },
-  { httpApiStatus: 400 }
-) {}
-
-/** One attempt per problem (D-02). */
-export class AlreadySubmitted extends Schema.TaggedError<AlreadySubmitted>()(
-  "AlreadySubmitted",
-  { message: Schema.String },
-  { httpApiStatus: 409 }
-) {}
 
 export interface SubmitInput {
   readonly studentId: string

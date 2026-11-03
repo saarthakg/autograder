@@ -1,23 +1,32 @@
-import { AdminAuth, Api } from "@autograder/domain"
+import { AdminAuth, Api, SubmitRequest } from "@autograder/domain"
+import { BunServices } from "@effect/platform-bun"
 import { assert, layer } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 import { HttpClientRequest, HttpServer } from "effect/http"
 import { HttpApiMiddleware, HttpApiTest } from "effect/http-api"
 import { ApiHandlers } from "../src/http/Handlers.ts"
+import { RubricGenerator } from "../src/grading/RubricGenerator.ts"
+import { Submissions } from "../src/grading/Submissions.ts"
 import { AdminAuthLive } from "../src/http/AdminAuth.ts"
 import { Instance } from "../src/Instance.ts"
 import { JobQueue } from "../src/queue/JobQueue.ts"
 import { WakeSignal } from "../src/worker/WakeSignal.ts"
 import { testConfig } from "./support/TestConfig.ts"
+import { PNG, resetDb, STROKES } from "./support/Seed.ts"
 import { TestDb, truncateJobs } from "./support/TestDb.ts"
 
 const withToken = (token: string | undefined) =>
   HttpApiMiddleware.layerClient(AdminAuth, ({ next, request }) =>
     next(token === undefined ? request : HttpClientRequest.bearerToken(request, token)))
 
+const NoRubrics = Layer.succeed(RubricGenerator, RubricGenerator.of({ generate: () => Effect.die("not used") }))
+
 const Handlers = ApiHandlers.pipe(
   Layer.provideMerge(AdminAuthLive),
-  Layer.provide(JobQueue.layer.pipe(Layer.provideMerge(Layer.mergeAll(WakeSignal.layer, Instance.layer)))),
+  Layer.provide(Layer.mergeAll(Submissions.layer, NoRubrics).pipe(
+    Layer.provideMerge(JobQueue.layer),
+    Layer.provideMerge(Layer.mergeAll(WakeSignal.layer, Instance.layer, BunServices.layer))
+  )),
   Layer.provide(testConfig()),
   Layer.provideMerge(TestDb)
 )
@@ -56,5 +65,20 @@ layer(Layer.mergeAll(Handlers, HttpServer.layerServices), { excludeTestServices:
       assert.strictEqual(job.status, "queued")
       const fetched = yield* client.admin.getJob({ params: { id: job.id } })
       assert.strictEqual(fetched.id, job.id)
+    }).pipe(Effect.provide(withToken("test-token"))))
+
+  it.effect("creates a demo class, accepts a submission and reads it back", () =>
+    Effect.gen(function*() {
+      yield* resetDb
+      const client = yield* makeClient
+      const demo = yield* client.admin.createDemoClass()
+      assert.strictEqual(demo.problems.length, 3)
+      const accepted = yield* client.admin.submit({
+        payload: new SubmitRequest({ studentId: demo.studentId, problemId: demo.problems[0]!.id, idempotencyKey: "http-test-key", strokes: STROKES, imagePng: PNG })
+      })
+      assert.strictEqual(accepted.status, "queued")
+      const view = yield* client.admin.getSubmission({ params: { id: accepted.id } })
+      assert.strictEqual(view.status, "queued")
+      assert.isNull(view.grade)
     }).pipe(Effect.provide(withToken("test-token"))))
 })

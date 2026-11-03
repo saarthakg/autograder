@@ -15,6 +15,7 @@ export const testConfig = (
       dbPoolMax: 5,
       adminToken: Redacted.make("test-token"),
       webDist: "/nonexistent",
+      fixtureDir: Option.none(),
       promptsDir: fileURLToPath(new URL("../../../../prompts", import.meta.url)),
       model: {
         apiKey: Option.some(Redacted.make("test-key")),

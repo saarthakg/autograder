@@ -14,6 +14,8 @@ export class AppConfig extends Context.Service<AppConfig, {
   /** Serve the built web app from here. */
   readonly webDist: string
   readonly promptsDir: string
+  /** Dev-only fixture capture target (D-18); None disables POST /admin/fixtures. */
+  readonly fixtureDir: Option.Option<string>
   readonly model: {
     /** None = real grading unavailable (simulated assignments still work, D-28). */
     readonly apiKey: Option.Option<Redacted.Redacted>
@@ -46,6 +48,7 @@ export class AppConfig extends Context.Service<AppConfig, {
       const promptsDir = yield* Config.String("PROMPTS_DIR").pipe(
         Config.withDefault(fileURLToPath(new URL("../../../prompts", import.meta.url)))
       )
+      const fixtureDir = yield* Config.option(Config.String("FIXTURE_DIR"))
       const apiKey = yield* Config.option(Config.Redacted("OPENROUTER_API_KEY"))
       const baseUrl = yield* Config.String("MODEL_BASE_URL").pipe(Config.withDefault("https://openrouter.ai/api/v1"))
       // Defaults are placeholders until the Phase 2 eval picks a model (D-19).
@@ -68,6 +71,7 @@ export class AppConfig extends Context.Service<AppConfig, {
         adminToken,
         webDist,
         promptsDir,
+        fixtureDir,
         model: {
           // An empty OPENROUTER_API_KEY= line counts as unset.
           apiKey: Option.filter(apiKey, (k) => Redacted.value(k) !== ""),
