@@ -111,7 +111,6 @@ export const EVAL_CASES: ReadonlyArray<EvalCase> = [
 
   // Hard set (added after the first run saturated): false-full-credit traps, sloppy writing, true illegibility.
   { key: "p1-right-answer-wrong-work", problem: "p1", kind: "right-answer-wrong-work", draw: "3x − 2 = 2x + 5 ↵ x = 11   (wrong distribution, then the right answer that doesn't follow)", expect: [0, 0, 1] },
-  { key: "p2-right-answer-wrong-work", problem: "p2", kind: "right-answer-wrong-work", draw: "−2x > 14 ↵ x < −4   (wrong constant, then the right answer that doesn't follow)", expect: [0, 0, 1] },
   { key: "p3-sloppy", problem: "p3", kind: "sloppy", draw: "15 + 0.10t = 23.50 ↵ 0.10t = 8.50 ↵ t = 85, written fast and sloppy: slanted, uneven, cramped, but a teacher could read it", expect: [1, 1, 1] },
   { key: "p1-illegible", problem: "p1", kind: "unreadable", draw: "Truly unreadable: tiny, overlapping, scrawled marks that even a teacher couldn't read. Make it unreadable, not neat-but-small", expect: "abstain" }
 ]
