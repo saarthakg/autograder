@@ -1,4 +1,4 @@
-import { EVAL_CASES, SAMPLE_PROBLEMS, type Stroke } from "@autograder/domain"
+import { EVAL_CASES, instructionHash, SAMPLE_PROBLEMS, type Stroke } from "@autograder/domain"
 import { Effect } from "effect"
 import { useCallback, useState } from "react"
 import { withAdmin } from "../api.ts"
@@ -37,7 +37,7 @@ export function FixtureCapture() {
     setStatus("Saving…")
     try {
       const png = await renderPng(strokes)
-      await Effect.runPromise(withAdmin(token, (admin) => admin.saveFixture({ payload: { caseKey: current.key, strokes, imagePng: png } })))
+      await Effect.runPromise(withAdmin(token, (admin) => admin.saveFixture({ payload: { caseKey: current.key, instructionHash: instructionHash(current), strokes, imagePng: png } })))
       const next = new Set(saved).add(current.key)
       setSaved(next)
       write(SAVED_KEY, [...next].join(","))

@@ -14,7 +14,7 @@
  * Writes evals/results/<run>/results.json (every call's latency and token usage,
  * to calibrate the load-test simulator) and summary.md.
  */
-import { EVAL_CASES, SAMPLE_PROBLEMS } from "@autograder/domain"
+import { EVAL_CASES, instructionHash, SAMPLE_PROBLEMS } from "@autograder/domain"
 import { BunRuntime, BunServices } from "@effect/platform-bun"
 import { Config, Data, Duration, Effect, Layer, Option, Redacted, Ref } from "effect"
 import { FetchHttpClient, HttpClient } from "effect/http"
@@ -123,6 +123,18 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
   console.log(`\nDatabase: none (in-memory ledger; DATABASE_URL* removed from env)`)
   console.log(`Fixtures: ${ready.length}/${cases.length} drawn in evals/fixtures/`)
   if (missing.length > 0) console.log(`  missing: ${missing.map((c) => c.key).join(", ")}`)
+
+  // Stale-fixture guard: each fixture records a fingerprint of the instructions it was drawn from.
+  const stale = ready.filter((c) => {
+    const saved = JSON.parse(readFileSync(`${FIXTURES}/${c.key}.json`, "utf8")) as { instructionHash?: string }
+    return saved.instructionHash !== instructionHash(c)
+  })
+  if (stale.length > 0) {
+    return yield* Effect.fail(new EvalError({
+      message: `fixtures drawn from outdated instructions (redraw them in /dev/fixtures): ${stale.map((c) => c.key).join(", ")}`
+    }))
+  }
+  console.log(`  all ${ready.length} match their current instructions (fingerprint check)`)
   // With nothing drawn yet, still project the full set so the cost is known up front.
   const projectedCases = ready.length === 0 ? cases.length : ready.length
 

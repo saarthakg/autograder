@@ -98,3 +98,25 @@ export const EVAL_CASES: ReadonlyArray<EvalCase> = [
   { key: "p1-scribble", problem: "p1", kind: "unreadable", draw: "Scribbles and loops, no real math", expect: "abstain" },
   { key: "p2-illegible", problem: "p2", kind: "unreadable", draw: "Something math-like but tiny and overlapping, so it can't be read", expect: "abstain" }
 ]
+
+/**
+ * Fingerprint of what the fixture page told the drawer to draw (problem text +
+ * instructions). Saved with each fixture; the eval refuses fixtures whose
+ * fingerprint no longer matches the current case, so a fixture drawn from
+ * stale instructions can't silently skew results. FNV-1a: not a security
+ * hash, just a stable sync fingerprint usable in browser and server.
+ */
+export const instructionText = (c: EvalCase): string => {
+  const problem = SAMPLE_PROBLEMS.find((p) => p.key === c.problem)
+  return `${c.key}\n${problem?.prompt ?? ""}\n${c.draw}`
+}
+
+export const instructionHash = (c: EvalCase): string => {
+  let h = 0x811c9dc5
+  const text = instructionText(c)
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i) // UTF-16 code units: fine for a fingerprint, and DOM-free
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, "0")
+}

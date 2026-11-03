@@ -61,3 +61,15 @@ describe("sample problems and eval cases (D-09, D-18)", () => {
     expect(new Set(EVAL_CASES.map((c) => c.key)).size).toBe(EVAL_CASES.length)
   })
 })
+
+describe("instructionHash (stale-fixture guard)", () => {
+  it("is stable, distinct per case, and changes when the instructions change", async () => {
+    const { EVAL_CASES, instructionHash } = await import("@autograder/domain")
+    const hashes = EVAL_CASES.map(instructionHash)
+    expect(new Set(hashes).size).toBe(EVAL_CASES.length)
+    expect(hashes.every((h) => /^[0-9a-f]{8}$/.test(h))).toBe(true)
+    const first = EVAL_CASES[0]!
+    expect(instructionHash({ ...first, draw: first.draw + " " })).not.toBe(instructionHash(first))
+  })
+})
+

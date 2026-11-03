@@ -111,6 +111,13 @@ export class RubricGenerationFailed extends Schema.TaggedError<RubricGenerationF
   { httpApiStatus: 502 }
 ) {}
 
+/** The drawer's page showed instructions that no longer match the case (stale build). */
+export class StaleFixture extends Schema.TaggedError<StaleFixture>()(
+  "StaleFixture",
+  { message: Schema.String },
+  { httpApiStatus: 409 }
+) {}
+
 export class FixturesDisabled extends Schema.TaggedError<FixturesDisabled>()(
   "FixturesDisabled",
   { message: Schema.String },
@@ -152,9 +159,14 @@ export class AdminApi extends HttpApiGroup.make("admin")
     }),
     // Dev-only fixture capture (D-18): writes strokes + PNG to FIXTURE_DIR.
     HttpApiEndpoint.post("saveFixture", "/fixtures", {
-      payload: Schema.Struct({ caseKey: Schema.String, strokes: Strokes, imagePng: Schema.Uint8ArrayFromBase64 }),
+      payload: Schema.Struct({
+        caseKey: Schema.String,
+        instructionHash: Schema.String,
+        strokes: Strokes,
+        imagePng: Schema.Uint8ArrayFromBase64
+      }),
       success: Schema.Struct({ path: Schema.String }),
-      error: FixturesDisabled
+      error: [FixturesDisabled, StaleFixture]
     })
   )
   .middleware(AdminAuth)

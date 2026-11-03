@@ -1,12 +1,15 @@
 import {
   Api,
   DemoClass,
+  EVAL_CASES,
   FixturesDisabled,
+  instructionHash,
   GradeView,
   JobNotFound,
   JobView,
   RubricGenerationFailed,
   SAMPLE_PROBLEMS,
+  StaleFixture,
   SubmissionAccepted,
   SubmissionNotFound,
   SubmissionView
@@ -146,11 +149,20 @@ export const AdminHandlers = HttpApiBuilder.group(
       saveFixture: ({ payload }) =>
         Effect.gen(function*() {
           if (Option.isNone(config.fixtureDir)) return yield* new FixturesDisabled({ message: "set FIXTURE_DIR to capture fixtures" })
-          if (!/^[a-z0-9-]+$/.test(payload.caseKey)) return yield* new FixturesDisabled({ message: "bad case key" })
+          const evalCase = EVAL_CASES.find((c) => c.key === payload.caseKey)
+          if (evalCase === undefined) return yield* new FixturesDisabled({ message: `unknown case ${payload.caseKey}` })
+          if (payload.instructionHash !== instructionHash(evalCase)) {
+            return yield* new StaleFixture({ message: "this page shows outdated instructions; reload it (rebuild the web app) and redraw" })
+          }
           const dir = config.fixtureDir.value
           yield* fs.makeDirectory(dir, { recursive: true })
           const base = path.join(dir, payload.caseKey)
-          yield* fs.writeFileString(`${base}.json`, JSON.stringify({ caseKey: payload.caseKey, strokes: payload.strokes, savedAt: new Date().toISOString() }))
+          yield* fs.writeFileString(`${base}.json`, JSON.stringify({
+            caseKey: payload.caseKey,
+            instructionHash: payload.instructionHash,
+            savedAt: new Date().toISOString(),
+            strokes: payload.strokes
+          }))
           yield* fs.writeFile(`${base}.png`, payload.imagePng)
           return { path: `${base}.png` }
         }).pipe(Effect.catchTag("PlatformError", Effect.die))
