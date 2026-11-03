@@ -23,6 +23,14 @@
     "skipLibCheck": true,
     "noErrorTruncation": true,
     "types": [],
-    "plugins": [{ "name": "@effect/language-service" }]
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        // effect/http-api and effect/sql are marked unstable in 4.1.x; the Effect repo
+        // turns this rule off for the same reason. Suggestions stay editor-only.
+        "diagnosticSeverity": { "unstableApiUsage": "off" },
+        "includeSuggestionsInTsc": false
+      }
+    ]
   }
 }
