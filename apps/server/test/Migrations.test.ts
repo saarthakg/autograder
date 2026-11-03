@@ -31,6 +31,13 @@ SELECT 1;`
     expect(parts[1]).toBe("SELECT 1;")
   })
 
+  it("splits every real migration into statements that each end with a semicolon", () => {
+    for (const name of ["0001_create_job.sql", "0002_grading_core.sql"]) {
+      const text = readFileSync(fileURLToPath(new URL(`../migrations/${name}`, import.meta.url)), "utf8")
+      for (const statement of splitStatements(text)) expect(statement.endsWith(";")).toBe(true)
+    }
+  })
+
   it("splits the real first migration into its four statements", () => {
     const text = readFileSync(fileURLToPath(new URL("../migrations/0001_create_job.sql", import.meta.url)), "utf8")
     expect(splitStatements(text)).toHaveLength(4)
