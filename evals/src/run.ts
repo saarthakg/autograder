@@ -270,10 +270,47 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
       outputTokens: c.outputTokens, costUsd: c.costUsd, httpStatus: c.httpStatus, error: c.error
     }))
   }, null, 2))
-  writeFileSync(`${dir}/summary.md`, summary(perModel, recommendation, { ready: ready.length, k, projectedTotal, actualCost, missing: missing.map((c) => c.key) }))
+  // Compact, committed: per-call latency and tokens per model, to fit the load-test simulator (P29).
+  writeFileSync(`${dir}/calibration.json`, JSON.stringify(Object.fromEntries(models.map((m) => {
+    const ok = calls.filter((c) => c.model === m && c.outcome === "ok")
+    return [m, {
+      latencyMs: ok.map((c) => c.latencyMs),
+      inputTokens: ok.map((c) => c.inputTokens ?? null),
+      outputTokens: ok.map((c) => c.outputTokens ?? null),
+      failures: calls.filter((c) => c.model === m && c.outcome !== "ok").map((c) => c.outcome)
+    }]
+  }))))
+  const errorsMd = wrongCases(perModel, golds)
+  writeFileSync(`${dir}/summary.md`, summary(perModel, recommendation, { ready: ready.length, k, projectedTotal, actualCost, missing: missing.map((c) => c.key) }) + errorsMd)
   console.log(`\n${summary(perModel, recommendation, { ready: ready.length, k, projectedTotal, actualCost, missing: missing.map((c) => c.key) })}`)
   console.log(`Results: evals/results/${runName}/`)
 })
+
+/** Every sample whose total (or abstention) disagrees with gold, with what the model read. */
+const wrongCases = (
+  rows: ReadonlyArray<{ model: string; samples: ReadonlyArray<Sample> }>,
+  golds: ReadonlyArray<Gold>
+) => {
+  const out = ["", "## Wrong cases", "", "Each miss with the model's transcription, to tell misreads (bad transcription) from misjudgments (good transcription, wrong verdict).", ""]
+  for (const r of rows) {
+    const misses = r.samples.filter((s) => {
+      const g = golds.find((x) => x.key === s.caseKey)!
+      if (g.expect === "abstain") return s.outcome !== "abstained"
+      const total = g.expect.reduce<number>((sum, v, i) => sum + v * g.weights[i]!, 0)
+      return s.outcome !== "graded" || s.total !== total
+    })
+    out.push(`### ${r.model} (${misses.length} of ${r.samples.length} samples)`, "")
+    for (const s of misses) {
+      const g = golds.find((x) => x.key === s.caseKey)!
+      const gold = g.expect === "abstain" ? "abstain" : `${g.expect.join("")} (${g.expect.reduce<number>((sum, v, i) => sum + v * g.weights[i]!, 0)} pts)`
+      const got = s.outcome === "graded" ? `${s.met?.map((m) => (m ? 1 : 0)).join("")} (${s.total} pts)` : s.outcome
+      const read = (s.transcription ?? s.error ?? "").replace(/\s+/g, " ").slice(0, 160)
+      out.push(`- \`${s.caseKey}\` run ${s.run}: gold ${gold}, got ${got}. Read: "${read}"`)
+    }
+    out.push("")
+  }
+  return out.join("\n")
+}
 
 const summary = (
   rows: ReadonlyArray<{ model: string; role: string; metrics: Metrics; gates: ReadonlyArray<{ name: string; pass: boolean; uncertain: boolean }> }>,
