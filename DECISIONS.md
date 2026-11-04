@@ -7,7 +7,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 ### D-01 ★ Feedback off still shows what went right
 - **Context:** real-time feedback is off, meaning no tutoring-style hints. But a bare grade lowers interest, while feedback about the task keeps it up (Butler 1987/88), and in a usability review students said they "never see what they missed".
 - **Choice:** the teacher picks what students see in `student_view`: score only; score + the criteria they met (the default); or score + met + "Not yet" for unmet criteria, in neutral ink, never red. Students never see the answer, hints or classmates. After submitting, the student sees their own drawing beside "Grading…", which becomes the score in place, and "Next problem →" works immediately.
-- **Why:** whether naming an unmet criterion counts as a hint is the teacher's classroom call, not ours. Nobody waits on the grader.
+- **Why:** whether naming an unmet criterion counts as a hint is the teacher's classroom call, not the product's. Nobody waits on the grader.
 
 ### D-04 ★ No accounts: capability links and rejoin codes
 - **Context:** a free growth product lives or dies on the first minute; a signup wall loses teachers, and students on shared Chromebooks can't manage passwords.
@@ -17,8 +17,8 @@ The product and engineering calls behind this app, and every choice that adds a 
 
 ### D-06 ★ Honest when unsure
 - **Context:** the worst error is confident credit nobody checks (see D-30).
-- **Choice:** illegible work, or a grade that fails after retries, gets no score. The student sees "Your teacher will check this one" and the teacher sees it at the top of the review queue. Low-confidence grades are shown and ranked for review. A teacher override updates the student's view. We never show a made-up or default score.
-- **Why:** holding back every low-confidence score would rest on a confidence signal we couldn't calibrate: the eval found no grading errors to calibrate against.
+- **Choice:** illegible work, or a grade that fails after retries, gets no score. The student sees "Your teacher will check this one" and the teacher sees it at the top of the review queue. Low-confidence grades are shown and ranked for review. A teacher override updates the student's view. A made-up or default score is never shown.
+- **Why:** holding back every low-confidence score would rest on a confidence signal that can't yet be calibrated: the eval found no grading errors to calibrate against.
 
 ### D-11 ★ Binary criteria; the model judges, code adds up
 - **Context:** model-assigned point totals drift between runs and hide how the score was reached.
@@ -37,7 +37,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 - **Deferred:** a confidence cascade that re-grades low-confidence results with the stronger model (see D-06).
 
 ### D-30 ★ The hard set caught the fallback inventing work
-- **Context:** a 3-case hard set (wrong work with the right answer, sloppy but correct work, a truly unreadable scribble), k=3. `gemini-3.1-flash-lite`, the first-choice fallback, cleared every gate on the main set but "read" `3x - 6 11` from the scribble all three times and awarded 3/4. Luna and sol abstained every time.
+- **Context:** a 3-case hard set (wrong work with the right answer, sloppy but correct work, a truly unreadable scribble), k=3. `gemini-3.1-flash-lite`, the leading fallback candidate, cleared every gate on the main set but "read" `3x - 6 11` from the scribble all three times and awarded 3/4. Luna and sol abstained every time.
 - **Choice:** the fallback is `gpt-6.1-sol`. Before leaving Luna, OpenRouter tries Luna on OpenAI, then Azure, then its other providers (`GRADING_PROVIDER_ORDER`). Every grade records which model and provider served it, and the teacher's drawer shows it.
 - **Why:** blended at a 2% fallback rate it's $0.00030 per grade. A full Luna outage costs $0.33 per class on sol; the budget guard stops spending at a $5 floor. Sending every fallback grade to review was rejected: it would bury teachers exactly when a provider is failing on a busy day.
 
@@ -66,7 +66,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 ### D-32 ★ Worker slots sized by Little's law
 - **Context:** the load test found one instance graded at most 9.3/s, because 32 slots ÷ 3.4 s per model call is about 9.4. Cloud Run scales on HTTP traffic and never saw the queue.
 - **Choice:** `MODEL_CONCURRENCY` and `MODEL_MAX_IN_FLIGHT` are set to 128.
-- **Why:** 4× testing-day (25.8/s) needs about 88 in flight at median latency and about 116 at p95, so 96 would leave no headroom. Slots wait on the network: CPU was 40% and memory 31% at 4×. Step 2× went from NO-SHIP (queue 347) to SHIP (queue 3), and 4× passes too, still on one instance. The next ceiling is predicted at about 37.6 grades/s.
+- **Why:** 4× testing-day (25.8/s) needs about 88 in flight at median latency and about 116 at p95, so 96 would leave no headroom. Slots wait on the network: CPU was 40% and memory 31% at 4×. At 32 slots step 2× is NO-SHIP (queue 347); at 128 it is SHIP (queue 3), and 4× passes too, still on one instance. The next ceiling is predicted at about 37.6 grades/s.
 - **Assumption:** OpenRouter and its upstream providers accept 128 concurrent calls; the canary only proved about 5/s.
 - **Deferred:** scaling workers on queue depth.
 
@@ -122,4 +122,4 @@ The product and engineering calls behind this app, and every choice that adds a 
 
 **D-27 The idle worker sleeps until it's needed.** With nothing claimable, the worker sleeps until the earliest of: a wake from the API on submit, the next due retry or lease expiry, or a long idle poll. An idle system issues almost no queries, so Neon can scale to zero, and a submit still starts grading immediately.
 
-**D-31 What the load test changed.** Measuring database transfer (Neon Free: 5 GB/month, shared with prod) found every student poll carrying the student's submitted drawings; drawings are now fetched once. Leases went from 60 s to 30 s with a heartbeat. The crash endpoint returns 404 unless the deploy is made with `ops/deploy.sh --chaos`.
+**D-31 Load-test safeguards.** Database transfer is measured per submission and projected before each run, because Neon Free allows 5 GB/month shared with production; that measurement caught student polls carrying submitted drawings, which are now fetched once. Leases are 30 s with a 10 s heartbeat, because a 60 s lease left stranded jobs waiting up to 66 s after a crash. The crash endpoint returns 404 unless the deploy is made with `ops/deploy.sh --chaos`.
