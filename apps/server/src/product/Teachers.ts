@@ -140,15 +140,24 @@ const make = Effect.gen(function*() {
   const list = Effect.fn("Teachers.list")(function*(teacherId: string) {
     const rows = yield* sql<{
       id: string; title: string; status: "draft" | "open" | "closed"; classCode: string | null; createdAt: Date
-      problemCount: number; studentCount: number; gradedCount: number; reviewCount: number
+      studentCount: number
     }>`
       SELECT a.id, a.title, a.status, a.class_code AS "classCode", a.created_at AS "createdAt",
-        (SELECT count(*)::int FROM problem p WHERE p.assignment_id = a.id) AS "problemCount",
-        (SELECT count(*)::int FROM student s WHERE s.assignment_id = a.id) AS "studentCount",
-        (SELECT count(*)::int FROM submission s JOIN problem p ON p.id = s.problem_id WHERE p.assignment_id = a.id AND s.status = 'graded') AS "gradedCount",
-        (SELECT count(*)::int FROM submission s JOIN problem p ON p.id = s.problem_id WHERE p.assignment_id = a.id AND s.status = 'needs_review') AS "reviewCount"
+        (SELECT count(*)::int FROM student s WHERE s.assignment_id = a.id) AS "studentCount"
       FROM assignment a WHERE a.teacher_id = ${teacherId} ORDER BY a.created_at DESC`
-    return rows.map((r) => new AssignmentSummary({ ...r, createdAt: DateTime.fromDateUnsafe(r.createdAt) }))
+    // Same counting as the report (overrides included), so the two never disagree.
+    return yield* Effect.forEach(rows, (r) =>
+      Effect.gen(function*() {
+        const problems = (yield* problemsOf(r.id)).map(toProblemView)
+        const { risks, graded } = evaluate(problems, yield* submissionsOf(r.id))
+        return new AssignmentSummary({
+          ...r,
+          createdAt: DateTime.fromDateUnsafe(r.createdAt),
+          problemCount: problems.length,
+          gradedCount: graded,
+          reviewCount: risks.length
+        })
+      }), { concurrency: 4 })
   })
 
   /** Every edit is a new version; grades keep the version they used (P3, D-10). */
@@ -255,6 +264,28 @@ const make = Effect.gen(function*() {
       LEFT JOIN rubric gr ON gr.problem_id = s.problem_id AND gr.version = g.rubric_version
       WHERE p.assignment_id = ${assignmentId}`
 
+  /**
+   * Effective state of every submission: model verdicts plus teacher overrides.
+   * The report and the assignment list both count from this, so they always agree.
+   */
+  const evaluate = (problems: ReadonlyArray<ProblemView>, subs: ReadonlyArray<SubRow>) => {
+    const evaluated = new Map(subs.map((s) => {
+      const problem = problems.find((p) => p.id === s.problemId)!
+      // Score against the rubric the grade used; ungraded work uses the current rubric.
+      const items = s.gradedItems ?? problem.rubric.items
+      const eff = effective(items, s.verdicts, s.overrides ?? {})
+      const stale = s.gradedVersion !== null && s.gradedVersion < problem.rubricVersion
+      return [s.id, { eff, stale, items }] as const
+    }))
+    const risks = subs.flatMap((s) => {
+      const { eff, stale } = evaluated.get(s.id)!
+      const r = reviewRisk({ status: s.status, reviewReason: s.reviewReason, confidence: s.confidence, staleRubric: stale, overridden: eff.overridden, score: eff.score })
+      return r === null ? [] : [{ s, r }]
+    })
+    const graded = subs.filter((s) => s.status !== "queued" && s.status !== "grading" && evaluated.get(s.id)!.eff.score !== null).length
+    return { evaluated, risks, graded }
+  }
+
   /** The class at a glance: grid, averages, per-criterion misses, risk-ranked queue (P5, P6). */
   const report = Effect.fn("Teachers.report")(function*(teacherId: string, assignmentId: string) {
     const a = yield* owned(teacherId, assignmentId)
@@ -266,19 +297,9 @@ const make = Effect.gen(function*() {
     const names = new Map(students.map((s) => [s.id, s.displayName]))
     const byKey = new Map(subs.map((s) => [`${s.studentId}:${s.problemId}`, s]))
 
-    const evaluated = new Map(subs.map((s) => {
-      const problem = problems.find((p) => p.id === s.problemId)!
-      // Score against the rubric the grade used; ungraded work uses the current rubric.
-      const items = s.gradedItems ?? problem.rubric.items
-      const eff = effective(items, s.verdicts, s.overrides ?? {})
-      const stale = s.gradedVersion !== null && s.gradedVersion < problem.rubricVersion
-      return [s.id, { eff, stale, items }]
-    }))
+    const { evaluated, risks, graded } = evaluate(problems, subs)
 
-    const reviewQueue = subs.flatMap((s) => {
-      const { eff, stale } = evaluated.get(s.id)!
-      const r = reviewRisk({ status: s.status, reviewReason: s.reviewReason, confidence: s.confidence, staleRubric: stale, overridden: eff.overridden, score: eff.score })
-      if (r === null) return []
+    const reviewQueue = risks.flatMap(({ s, r }) => {
       return [new ReviewItem({
         submissionId: s.id,
         studentName: names.get(s.studentId) ?? "?",
@@ -329,7 +350,7 @@ const make = Effect.gen(function*() {
       problems: problemStats,
       students: reportStudents,
       reviewQueue,
-      graded: reportStudents.reduce((n, s) => n + s.cells.filter((c) => c.status === "graded").length, 0),
+      graded,
       worthALook: reviewQueue.length
     })
   })

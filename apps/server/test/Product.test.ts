@@ -141,11 +141,17 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.strictEqual((yield* student.student.home()).problems[0]!.submission!.state, "teacher_check")
         let report = yield* teacher.teacher.report({ params: { id: assignment.id } })
         assert.deepStrictEqual(report.reviewQueue.map((r) => r.reason), ["illegible"])
+        let [summary] = yield* teacher.teacher.listAssignments()
+        assert.deepStrictEqual([summary!.gradedCount, summary!.reviewCount], [0, 1])
         for (const c of ["c1", "c2", "c3"]) yield* teacher.teacher.override({ params: { id: accepted.id, criterionId: c }, payload: { met: c !== "c2" } })
         const home = yield* student.student.home()
         assert.deepStrictEqual([home.problems[0]!.submission!.state, home.problems[0]!.submission!.score], ["graded", 3])
         report = yield* teacher.teacher.report({ params: { id: assignment.id } })
         assert.strictEqual(report.reviewQueue.length, 0)
+        // The list counts the same way as the report: resolved by hand means graded, nothing to check.
+        ;[summary] = yield* teacher.teacher.listAssignments()
+        assert.deepStrictEqual([summary!.gradedCount, summary!.reviewCount], [report.graded, report.worthALook])
+        assert.deepStrictEqual([summary!.gradedCount, summary!.reviewCount], [1, 0])
       }))
 
     it.effect("teacher can hide criteria from students (D-01 toggle)", () =>
