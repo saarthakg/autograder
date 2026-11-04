@@ -77,6 +77,7 @@ const EvalConfig = Layer.effect(
       webDist: "unused",
       promptsDir: here("../../prompts"),
       fixtureDir: Option.none(),
+      chaosEnabled: false,
       model: {
         apiKey: Option.filter(apiKey, (k) => Redacted.value(k) !== ""),
         baseUrl: baseUrl.replace(/\/$/, ""),

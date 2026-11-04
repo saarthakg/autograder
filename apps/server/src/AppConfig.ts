@@ -16,6 +16,8 @@ export class AppConfig extends Context.Service<AppConfig, {
   readonly promptsDir: string
   /** Dev-only fixture capture target (D-18); None disables POST /admin/fixtures. */
   readonly fixtureDir: Option.Option<string>
+  /** ENABLE_CHAOS=1 turns on the load test's crash endpoint; set only for the chaos run's deploy. */
+  readonly chaosEnabled: boolean
   readonly model: {
     /** None = real grading unavailable (simulated assignments still work, D-28). */
     readonly apiKey: Option.Option<Redacted.Redacted>
@@ -64,6 +66,7 @@ export class AppConfig extends Context.Service<AppConfig, {
         Config.withDefault(fileURLToPath(new URL("../../../prompts", import.meta.url)))
       )
       const fixtureDir = yield* Config.option(Config.String("FIXTURE_DIR"))
+      const chaosEnabled = (yield* Config.String("ENABLE_CHAOS").pipe(Config.withDefault(""))) === "1"
       const apiKey = yield* Config.option(Config.Redacted("OPENROUTER_API_KEY"))
       const baseUrl = yield* Config.String("MODEL_BASE_URL").pipe(Config.withDefault("https://openrouter.ai/api/v1"))
       // Chosen by the Phase 2 eval (D-19): cheapest model clearing every gate.
@@ -103,6 +106,7 @@ export class AppConfig extends Context.Service<AppConfig, {
         webDist,
         promptsDir,
         fixtureDir,
+        chaosEnabled,
         model: {
           // An empty OPENROUTER_API_KEY= line counts as unset.
           apiKey: Option.filter(apiKey, (k) => Redacted.value(k) !== ""),

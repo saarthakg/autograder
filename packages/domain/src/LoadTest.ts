@@ -51,6 +51,13 @@ export class RunAnalysis extends Schema.Class<RunAnalysis>("RunAnalysis")({
   timeline: Schema.Array(Schema.Struct({ t: Schema.Int, accepted: Schema.Int, graded: Schema.Int, ttgP95: Schema.NullOr(Schema.Number) }))
 }) {}
 
+/** The crash endpoint exists only on a deploy made with ENABLE_CHAOS=1 (the chaos run); otherwise 404. */
+export class ChaosDisabled extends Schema.TaggedError<ChaosDisabled>()(
+  "ChaosDisabled",
+  { message: Schema.String },
+  { httpApiStatus: 404 }
+) {}
+
 export class LoadTestApi extends HttpApiGroup.make("loadtest")
   .add(
     HttpApiEndpoint.post("createClasses", "/classes", {
@@ -78,7 +85,7 @@ export class LoadTestApi extends HttpApiGroup.make("loadtest")
       success: Schema.Struct({ assignments: Schema.Int })
     }),
     /** Chaos check: this instance exits abruptly, with no graceful shutdown. */
-    HttpApiEndpoint.post("crash", "/crash", { success: Schema.Struct({ instanceId: Schema.String }) })
+    HttpApiEndpoint.post("crash", "/crash", { success: Schema.Struct({ instanceId: Schema.String }), error: ChaosDisabled })
   )
   .middleware(AdminAuth)
   .prefix("/admin/loadtest")

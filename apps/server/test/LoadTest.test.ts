@@ -57,5 +57,9 @@ layer(TestApp, { excludeTestServices: true })("load-test operator endpoints (D-2
       const anon = yield* makeClient.pipe(Effect.provide(withTokens()))
       const err = yield* anon.loadtest.metrics().pipe(Effect.flip)
       assert.strictEqual(err._tag, "Unauthorized")
+      // Without ENABLE_CHAOS=1 the crash endpoint doesn't exist, even for the operator.
+      const admin = yield* makeClient.pipe(Effect.provide(withTokens({ admin: "test-token" })))
+      const crash = yield* admin.loadtest.crash().pipe(Effect.flip)
+      assert.strictEqual(crash._tag, "ChaosDisabled")
     }))
 })

@@ -43,6 +43,9 @@ yaml_quote() { printf "'%s'" "${1//\'/\'\'}"; }
   echo "ADMIN_TOKEN: $(yaml_quote "$(env_val ADMIN_TOKEN)")"
   key="$(env_val OPENROUTER_API_KEY)"; [ -n "$key" ] && echo "OPENROUTER_API_KEY: $(yaml_quote "$key")"
   echo "APP_VERSION: '$SHA'"
+  # Opt-in, from the deploying shell only: ENABLE_CHAOS=1 for the chaos run, JOB_LEASE to compare leases.
+  if [ "${ENABLE_CHAOS:-}" = "1" ]; then echo "ENABLE_CHAOS: '1'"; fi
+  if [ -n "${JOB_LEASE:-}" ]; then echo "JOB_LEASE: $(yaml_quote "$JOB_LEASE")"; fi
 } > "$envfile"
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT" --region "$REGION" --image "$IMAGE" \

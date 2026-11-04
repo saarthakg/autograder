@@ -1,7 +1,8 @@
-import { Api, LoadTestClasses, QueueMetrics, RunAnalysis, SAMPLE_PROBLEMS } from "@autograder/domain"
+import { Api, ChaosDisabled, LoadTestClasses, QueueMetrics, RunAnalysis, SAMPLE_PROBLEMS } from "@autograder/domain"
 import { DateTime, Effect } from "effect"
 import { HttpApiBuilder } from "effect/http-api"
 import { SqlClient } from "effect/sql"
+import { AppConfig } from "../AppConfig.ts"
 import { Instance } from "../Instance.ts"
 import { SimulatedModel } from "../model/SimulatedModel.ts"
 import { newSecret, sha256, shortCode } from "../product/Codes.ts"
@@ -20,6 +21,7 @@ export const LoadTestHandlers = HttpApiBuilder.group(
     const sql = yield* SqlClient.SqlClient
     const instance = yield* Instance
     const simulator = yield* SimulatedModel
+    const config = yield* AppConfig
 
     return handlers.handleAll({
       createClasses: ({ payload }) =>
@@ -139,6 +141,7 @@ export const LoadTestHandlers = HttpApiBuilder.group(
 
       crash: () =>
         Effect.gen(function*() {
+          if (!config.chaosEnabled) return yield* new ChaosDisabled({ message: "not found" })
           yield* Effect.logWarning("chaos: crash requested; exiting without graceful shutdown")
           // Answer first, then die hard: in-flight requests and leased jobs on this instance are cut off.
           setTimeout(() => process.exit(137), 200)
