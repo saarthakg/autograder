@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "dev": "bun --env-file=../../.env --watch src/main.ts",
-    "start": "bun src/main.ts",
     "migrate": "bun --env-file=../../.env src/migrate.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "bun --bun vitest run"
