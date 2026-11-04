@@ -14,10 +14,11 @@ const write = (k: string, v: string) => {
 }
 
 /**
- * Dev-only fixture capture (D-18, P17): draw each gold case in the real
+ * Dev-only fixture capture (D-18): draw each gold case in the real
  * whiteboard and save its strokes + the exact PNG the grader would see to
- * evals/fixtures/ (via the local server's FIXTURE_DIR). Run locally:
- *   FIXTURE_DIR=../../evals/fixtures bun run dev   then open /dev/fixtures
+ * evals/fixtures/ (via the local server's FIXTURE_DIR). Not in production
+ * builds. Run locally, then open http://localhost:5173/dev/fixtures:
+ *   FIXTURE_DIR=../../evals/fixtures bun run dev   and   cd apps/web && bun run dev
  */
 export function FixtureCapture() {
   const [token, setToken] = useState(read(TOKEN_KEY))

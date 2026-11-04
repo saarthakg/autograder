@@ -1,7 +1,7 @@
 import { Api } from "@autograder/domain"
 import { BunHttpServer, BunRuntime, BunServices } from "@effect/platform-bun"
 import { Duration, Effect, Layer } from "effect"
-import { FetchHttpClient, HttpRouter, HttpStaticServer } from "effect/http"
+import { FetchHttpClient, HttpRouter, HttpServerResponse, HttpStaticServer } from "effect/http"
 import { HttpApiBuilder } from "effect/http-api"
 import { AppConfig } from "./AppConfig.ts"
 import { DbLive } from "./Db.ts"
@@ -38,7 +38,9 @@ const App = Layer.unwrap(
       Layer.provide(Layer.mergeAll(AdminAuthLive, TeacherAuthLive, StudentAuthLive))
     )
     const webRoutes = HttpStaticServer.layer({ root: config.webDist, spa: true })
-    const http = HttpRouter.serve(Layer.mergeAll(apiRoutes, webRoutes)).pipe(
+    // Dev-only pages (fixture capture) are served by Vite in development, never by this server.
+    const devRoutes = HttpRouter.add("GET", "/dev/*", HttpServerResponse.empty({ status: 404 }))
+    const http = HttpRouter.serve(Layer.mergeAll(apiRoutes, webRoutes, devRoutes)).pipe(
       Layer.provide(BunHttpServer.layer({ port: config.port, gracefulShutdownTimeout: Duration.seconds(5) }))
     )
     const worker = WorkerLive.pipe(Layer.provide(HandlersLive))

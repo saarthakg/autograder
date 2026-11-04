@@ -1,6 +1,5 @@
-import { StrictMode } from "react"
+import { lazy, StrictMode, Suspense } from "react"
 import { createRoot } from "react-dom/client"
-import { FixtureCapture } from "./dev/FixtureCapture.tsx"
 import { Landing } from "./Landing.tsx"
 import { navigate, usePath } from "./lib/router.ts"
 import { teacherSecret } from "./lib/storage.ts"
@@ -12,11 +11,16 @@ import { NewAssignment } from "./teacher/NewAssignment.tsx"
 import { TeacherHome } from "./teacher/TeacherHome.tsx"
 import "./styles.css"
 
+// Dev-only fixture capture (D-18). In a production build DEV is false, so Vite drops the page and its chunk.
+const FixtureCapture = import.meta.env.DEV
+  ? lazy(() => import("./dev/FixtureCapture.tsx").then((m) => ({ default: m.FixtureCapture })))
+  : null
+
 function App() {
   const path = usePath()
   if (path === "/join") return <Join />
   if (path === "/s") return <StudentApp />
-  if (path === "/dev/fixtures") return <FixtureCapture />
+  if (FixtureCapture && path === "/dev/fixtures") return <Suspense fallback={null}><FixtureCapture /></Suspense>
   if (path.startsWith("/share/")) return <SharePage slug={path.slice("/share/".length)} />
   if (path === "/t/new") return <NewAssignment />
   if (path.startsWith("/t")) {
