@@ -2,11 +2,12 @@
 
 This is a numbered log of every call the brief left open and every choice that adds a dependency, service, table or abstraction. ★ marks the **headline** decisions, which the README leads with. `Pxx` refers to the project's working principles. The design itself is in [`docs/PLAN.md`](docs/PLAN.md).
 
-Status values:
-- **Proposed**: awaiting review.
-- **Accepted**: agreed.
-- **Asked Alp**: waiting on Goblins.
-- **Superseded by D-xx**: replaced by a later entry.
+Every entry now carries a **final** status:
+- **Shipped**: built and deployed as written.
+- **Shipped, with changes**: built, and the status says exactly what differs from the text.
+- **Superseded by D-xx**: replaced by a later entry, kept for the record.
+
+Nothing is left Proposed or waiting on Goblins. D-01 and D-02 were decided without Alp, and say so.
 
 ---
 
@@ -24,7 +25,7 @@ Status values:
   - It's the most task-involving option that still counts as "feedback off". Showing unmet criteria would effectively be hints.
   - Students need something affirming to keep going ("inspire the love of learning").
 - **Refs:** P8, §1.2
-- **Status:** Accepted. Decided without Alp, using the reading above.
+- **Status:** **Final: shipped, as amended below** (three-way `student_view`, default score + met criteria). Decided without Alp.
   - The brief turns off *real-time feedback*, meaning tutoring-style hints. Labels for met criteria are task-framed affirmation, not hints.
   - If Goblins reads it more strictly, `showCriteriaToStudents=false` gives score only. That's one setting, not a redesign.
 - **Amendment (Saarthak, 2026-11-04), after the outsider UI review:** the on/off toggle becomes a three-way teacher setting, `student_view`:
@@ -48,7 +49,7 @@ Status values:
   - One attempt also caps model spend at one call per student per problem.
   - It matches the brief's flow: "submit, see score, continue to the next".
 - **Refs:** P23, P8
-- **Status:** Accepted. Decided without Alp.
+- **Status:** **Final: shipped, with one change.** Submit has no confirmation step. Instead, "You get one try per problem" sits beside the button. The `attempt` column is in place for a teacher-granted retry later. Decided without Alp.
 
 ### D-03 Problem input format and points
 - **Context:** The brief doesn't say how problems are entered or how many points they're worth.
@@ -61,7 +62,7 @@ Status values:
   - Upload-and-extract is a great time-to-magic feature, but it's a separate model pipeline with its own eval. It stays a stretch item listed in the README.
   - Integer points keep rubric math exact.
 - **Refs:** P3, §6
-- **Status:** Accepted
+- **Status:** **Final: shipped.** Upload-and-extract stays a next step.
 
 ### D-04 ★ Identity and cross-device persistence without auth
 - **Context:** The brief asks for no email auth, and data has to persist across devices.
@@ -78,7 +79,7 @@ Status values:
   - The risk is named: anyone with the teacher link has access. That's acceptable for a free growth product and documented.
   - A new `teacher` table adds one row of complexity and buys a teacher home page. The rejected alternative, a separate link per assignment, leaves teachers with N links and no home.
 - **Refs:** P1, P2, P7
-- **Status:** Accepted
+- **Status:** **Final: shipped.**
 
 ### D-05 What "progress" means in the report
 - **Decision:** The report is a students × problems grid that refreshes live. Each cell is one of:
@@ -96,7 +97,7 @@ Status values:
   - the line "84 graded, 6 worth a look"
 - **Why:** The report should answer "what do I do tomorrow?", not just list grades. Everything in it comes from data we already store.
 - **Refs:** P5, P6
-- **Status:** Accepted
+- **Status:** **Final: shipped** (grid, completion, per-problem averages with n, "What the class missed", risk-ranked review queue).
 
 ### D-06 ★ Honest states when grading fails or is unsure
 - **Decision:**
@@ -109,7 +110,7 @@ Status values:
   - Holding every low-confidence score would make the student-facing experience depend on a confidence signal that isn't calibrated yet.
   - The eval measures whether `low` predicts errors. If it does, we tighten the rule to hold `low` too (D-19).
 - **Refs:** P9, P5, P18
-- **Status:** Accepted
+- **Status:** **Final: shipped.** The eval found no grading errors to calibrate against, so `low` confidence is ranked for review but not held back from the student. Revisit as teacher overrides accumulate.
 
 ### D-07 Budget: the key's limit is $50, verified, not assumed
 - **Context:** The brief says $20, and the email with the key says $50.
@@ -125,7 +126,7 @@ Status values:
   - Any single eval or canary run projected above $2 still needs Saarthak's approval.
 - **Why:** Read the number from the source of truth instead of guessing between two documents.
 - **Refs:** P25, P27
-- **Status:** Accepted (verified 2026-11-02)
+- **Status:** **Final: held.** Total key usage across all phases is about $0.27 of $50.
 
 ### D-08 Rubric generated synchronously when a problem is saved
 - **Decision:**
@@ -136,7 +137,7 @@ Status values:
   - Seeing a rubric appear is part of the magic moment.
   - Quality matters more here, because every grade inherits the rubric.
 - **Refs:** P3, P1
-- **Status:** Accepted. The model is chosen in Phase 2.
+- **Status:** **Final: shipped** with `openai/gpt-6.1-terra` (`RUBRIC_MODEL`) and the starter-template fallback.
 
 ### D-09 One-click sample assignment with pre-written rubrics
 - **Decision:** "Try a sample" creates an Algebra 1 assignment using the four eval problems and their reviewed gold rubrics. It makes **no model call**, so it's instant and free.
@@ -144,7 +145,7 @@ Status values:
   - The fastest path to a class code. Time-to-magic is about 20 s.
   - Showing teachers the rubric the eval proved is better than showing a fresh, unchecked one.
 - **Refs:** P1, P10
-- **Status:** Accepted
+- **Status:** **Final: shipped,** with the **three** eval problems (p1–p3), not four, matching the gold set in D-18.
 
 ### D-10 Editing a rubric after grades exist
 - **Decision:**
@@ -152,7 +153,7 @@ Status values:
   - The report flags "graded with an earlier rubric".
   - "Re-grade affected" is a stretch item (P19).
 - **Refs:** P3, P19
-- **Status:** Accepted
+- **Status:** **Final: shipped** (versioned rubrics, ↺ "graded with an earlier rubric" mark). "Re-grade affected" was not built and is a next step.
 
 ## Grading engine
 
@@ -173,7 +174,7 @@ Status values:
 - **Conditions (Saarthak, 2026-11-02):**
   1. The rubric generator must produce **atomic, independently checkable** criteria: each one is a single fact a grader can verify on its own, never "sets up and solves". `rubric.v1.md` asks for this, and the eval checks generated rubrics against it.
   2. A criterion can be worth **more than 1 point**. The weight lives in `rubric.points`, and code applies it: total = Σ points of met criteria. The model still never sees weights.
-- **Status:** Accepted with the two conditions above.
+- **Status:** **Final: shipped,** with both conditions.
 
 ### D-12 ★ Async grading on a Postgres queue
 - **Decision:**
@@ -197,7 +198,7 @@ Status values:
   - Rejected: Redis or SQS, because it's another service to run and its state lives outside Postgres.
   - Where this stops scaling is covered in LOADTEST.md.
 - **Refs:** P8, P22, P23, P24
-- **Status:** Accepted
+- **Status:** **Final: shipped,** with two changes. The `ROLE` split was superseded by D-28 (one process). The advisory lock was not needed: every run used one instance, where the local `Semaphore` makes the cap exact. Slot counts are set by D-32.
 
 ### D-13 Image pipeline: strokes are the source of truth
 - **Decision:**
@@ -209,7 +210,7 @@ Status values:
   - The same render function produces the eval fixtures.
   - Purging keeps a free-tier database small under load tests.
 - **Refs:** P12, P16
-- **Status:** Accepted
+- **Status:** **Final: shipped** (PNG cleared when a submission reaches a terminal state).
 
 ### D-14 Model client: a thin wrapper over `HttpClient`, checked against `@effect/ai-openrouter`
 - **Decision:** The plan is a roughly 150-line `ModelClient` service built on `effect/http`'s `HttpClient`, with OpenAI-compatible chat completions and a configurable base URL. In Phase 2, before building it, check whether `@effect/ai-openrouter@4.1.2` exposes:
@@ -222,27 +223,27 @@ Status values:
 - **Why:** We need direct control over cost accounting, error classification (402 vs 429 vs 5xx) and the base-URL swap to fake-llm. A generic `LanguageModel` abstraction may hide those.
 - **Refs:** P21, P25, §5
 - **Spike result (Phase 2):** `@effect/ai-openrouter@4.1.2` handles `Retry-After`, 402 and `response_format`, but does not pass through OpenRouter's `usage.cost`. That figure is authoritative, because it includes image pricing and whichever provider was routed to. So the client is hand-rolled (about 150 lines in `apps/server/src/model/ModelClient.ts`). For the strict JSON Schema it reuses Effect's own `OpenAiStructuredOutput.toCodecOpenAI`, which inlines definitions, sets `additionalProperties: false`, and keeps every constraint enforced by the returned codec.
-- **Status:** Accepted. Hand-rolled client confirmed by the spike.
+- **Status:** **Final: shipped.** Hand-rolled client, confirmed by the spike.
 
 ### D-15 `model_call` ledger table
 - **Decision:** Add a `model_call` table that records every call, including failed ones: purpose, model, status, tokens, cost, latency and error kind.
 - **Why:** `grade` stores only successful calls. The budget guard, 429 rates and the cost per grade all need failed calls too. The simpler option, logs only, can't be queried after a load test.
 - **Refs:** P25, P26
-- **Status:** Accepted
+- **Status:** **Final: shipped.** The load-test analysis reads it too.
 
 ### D-16 Effect reference: canonical `Effect-TS/effect` at 4.1.2, not effect-smol
 - **Context:** The principles say to clone `Effect-TS/effect-smol`. That repo has been archived since July 2026 at 4.0.0-beta.98, and its README says v4 moved to `Effect-TS/effect`. npm `effect@latest` is 4.1.2.
 - **Decision:**
   - Clone `Effect-TS/effect` at tag `effect@4.1.2` into `.repos/effect` (gitignored).
   - Pin `effect` and `@effect/*` to exactly 4.1.2.
-- **Status:** Accepted (approved 2026-11-02)
+- **Status:** **Final: shipped** (approved 2026-11-02).
 
 ### D-17 TypeScript 7 with `@effect/tsgo` instead of `@effect/language-service`
 - **Context:** The Effect repo itself uses TypeScript 7 (native). The `@effect/language-service` README says to use `@effect/tsgo` with TS ≥ 7.
 - **Decision:**
   - Pin `typescript@7.0.2` and `@effect/tsgo@0.64.1`.
   - A `prepare` script patches `tsc`, so Effect diagnostics fail the typecheck, not just the editor. A floating Effect was confirmed to fail `tsc`.
-- **Status:** Accepted. A forced follow-on of D-16.
+- **Status:** **Final: shipped.** A forced follow-on of D-16.
 
 ## Eval and model choice
 
@@ -253,7 +254,7 @@ Status values:
   - Per-criterion ground truth, approved by Saarthak.
   - The same fixtures become load-test payloads.
 - **Refs:** P17, P30
-- **Status:** Accepted
+- **Status:** **Final: shipped, narrowed.** 20 cases on 3 problems, plus the 3-case hard set (D-30). The load test reuses the smallest of these drawings.
 
 ### D-19 ★ Model choice is the cheapest model that clears an agreed bar
 - **Decision:**
@@ -275,7 +276,7 @@ Status values:
   - **Abstention:** abstaining (`legible: false`) on work the gold set marks illegible counts as **correct**. Abstaining on legible work counts as an error, reported separately as the false-abstention rate.
   - The **strong reference model always appears** beside the cheap ones in every table and chart.
   - **If no cheap model clears the bar**, pick the best one, say so plainly in the README, and list the gates it misses.
-- **Status:** Accepted with the amendments above.
+- **Status:** **Final: shipped.** `openai/gpt-6-luna` is the grader. The confidence cascade was not built: with no errors in the gold set, calibration couldn't be measured (P18). The fallback was superseded by D-30.
 - **First run (2026-11-03, `evals/results/2026-11-03T05-10-14-515Z/`):** 20 cases × k=3 × 5 models; spend $0.23 billed, $0.32 at list price.
   - `openai/gpt-6-luna`, `google/gemini-3.1-flash-lite` and the `gpt-6.1-sol` reference clear every gate. `deepseek/deepseek-v4.1-flash` misses within-one by 0.2 points: 55/58, after 2 empty provider responses were excluded. `qwen/qwen3-vl-30b-a3b-instruct` misses 4 gates.
   - **Chosen: `openai/gpt-6-luna`** (approved 2026-11-03). On the 20-case set it scored:
@@ -361,7 +362,7 @@ Status values:
     - Region `us-east4`.
     - Secrets live in Secret Manager.
     - The billing account is never upgraded.
-- **Status:** Superseded by D-28 (2026-11-02). Kept for the record of what was considered.
+- **Status:** **Final: superseded by D-28** (2026-11-02). Kept for the record of what was considered.
 
 ### D-21 Load generator: custom Bun + Effect open model, not k6
 - **Decision:**
@@ -373,7 +374,7 @@ Status values:
   - It reuses the domain schemas and fixtures, and needs no extra binary in CI.
   - The usual risk of a home-grown generator, its own bottleneck, is measured and gated.
 - **Refs:** P30, P31
-- **Status:** Accepted
+- **Status:** **Final: shipped** (`loadtest/`).
 
 ### D-22 ★ SLOs, and the verdict they produce
 - **Decision:** PLAN §8 values:
@@ -388,13 +389,13 @@ Status values:
   Each run reports PASS / FAIL / INVALID per SLO.
 - **Refs:** P32
 - **Final (approved by Saarthak, 2026-11-04):** the values above, gated as listed in `loadtest/src/slo.ts`. Expected load is testing-day: 40 classes × 30 students × 10 problems, starts staggered over 15 min, peaking near 7 submits/s. Neon and Cloud Run cold starts are measured but kept out of the SLOs (a warm-up runs first). Under chaos, latency, error rate and time to grade are reported, not gated.
-- **Status:** Final. Originally approved in principle; final values went to Saarthak before the first load-test run. They must cover: the zero-lost invariant checked against the DB; submit p99; time-to-grade p95 at an expected load stated in classes and students; drain time after a spike; `needs_review` rate with a healthy provider; and whether Neon cold start is inside the measurement.
+- **Status:** **Final: shipped** (values approved 2026-11-04, as above).
 
 ### D-23 Calibration canary runs against prod with a synthetic tenant
 - **Decision:** About 50 real-model submissions through the deployed prod path, tagged with a `run_id` and cleaned up afterwards, behind the budget guard. Projected cost $0.02–0.05. Under D-28 this is the same public service; the canary simply creates a *non-simulated* load-test assignment.
 - **Why:** It exercises exactly the code and network path that the simulator is standing in for. Rejected: briefly re-pointing the loadtest environment at OpenRouter, because that's a config flip that's easy to leave on.
 - **Refs:** P29
-- **Status:** Accepted
+- **Status:** **Final: shipped.** The canary ran 50 real grades in a 10 s burst for $0.009 (LOADTEST.md).
 
 ### D-24 Polling with backoff and ETags, not SSE or websockets
 - **Decision:**
@@ -406,7 +407,7 @@ Status values:
   - The load test models polling explicitly, because at scale reads outnumber submits.
   - SSE is the documented next step, and a sync engine is what Goblins already has.
 - **Refs:** §5 real-time, P11
-- **Status:** Accepted
+- **Status:** **Final: shipped without ETags.** Students poll 2 → 8 s only while a score is pending, and the report polls 10 → 30 s; both stop in hidden tabs. ETags were not built. Payloads are small (~35 KB of transfer per submission, all in), and the load test showed polls at p99 73 ms. SSE stays the next step.
 
 ### D-25 Tests: `@effect/vitest` plus a real Postgres
 - **Decision:**
@@ -417,14 +418,14 @@ Status values:
   - SKIP LOCKED and lease semantics can't be mocked honestly.
   - `@effect/vitest` buys `it.effect` and `TestClock`, which is one dev dependency's worth.
 - **Refs:** W4
-- **Status:** Accepted
+- **Status:** **Final: shipped** (85 server tests on real Postgres, in CI).
 
 ### D-26 Plain `.sql` migration files, run by Effect's migrator
 - **Decision:** Migrations live in `apps/server/migrations/NNNN_name.sql`. A small loader reads them into `Migrator.fromRecord`, so Effect's `PgMigrator` handles ordering, locking and the migrations table.
 - **Why:**
   - Effect's built-in file loader only imports `.ts`/`.js` modules.
   - Plain SQL is what a reviewer expects to read in a schema history, and it's what the principles' §5 asks for.
-- **Status:** Accepted
+- **Status:** **Final: shipped** (migrations 0001–0007, expand-only).
 
 ### D-27 ★ Worker: a Cloud Run service with instance-based billing (min = max = 1), woken by the API
 - **Context:** Amendment A2 to D-20 needs an always-running worker. The two Cloud Run options are an instance-based service and a worker pool.
@@ -446,7 +447,7 @@ Status values:
   - A lost wake isn't a lost job. The job is already committed, and the timed poll or the lease sweep picks it up.
   - The wake only changes *latency*, never correctness.
 - **Refs:** P22, P24, D-20 A2/A5
-- **Status:** Superseded by D-28. The worker now runs in-process with the API, so the HTTP wake path is gone. The idle-wait logic (sleep until the next due retry or lease expiry) stays.
+- **Status:** **Final: superseded by D-28.** The worker now runs in-process with the API, so the HTTP wake path is gone. The idle-wait logic (sleep until the next due retry or lease expiry) stays.
 
 ### D-28 ★ Hosting cut to the brief's minimum: one public URL, load test against it
 - **Context:** The brief needs "a publicly hosted web app", plus a load test that is re-runnable and cheap, in about 75 minutes per part. The hosting plan that grew out of P28/P29/P33 (D-20 A1–A8, D-27) didn't fit that budget, and it pulled time away from the product. It would have needed a separately deployed loadtest environment and fake-llm, a second database, split API/worker services, Secret Manager, IAM, budgets and a CI load-test workflow.
@@ -484,7 +485,7 @@ Status values:
   - full chaos suite
 - **Supersedes:** D-20 and D-27. Adjusts D-21 to D-23 as noted.
 - **Refs:** P28, P29, P33, §0.1 (scoping under a tight time budget)
-- **Status:** Accepted (Saarthak, 2026-11-02)
+- **Status:** **Final: shipped** (Saarthak, 2026-11-02).
 
 ### D-29 Eval hygiene: fingerprinted fixtures, list-price comparison, rescore without spend
 - **Fixtures are fingerprinted.** Each fixture stores a hash of the problem and drawing instructions its page showed. The server refuses stale saves, and the runner refuses to score stale fixtures. This came from two fixtures drawn in a tab opened before the instructions changed, which would have silently corrupted gold.
@@ -492,7 +493,7 @@ Status values:
 - **`evals/src/rescore.ts`** rebuilds a summary from saved raw results, so reporting fixes never need a second paid run.
 - **Raw `results.json` stays local** (gitignored). The summary and the compact `calibration.json` (per-call latency and tokens, for the Phase 4 simulator) are committed.
 - **Refs:** P17, P29, W2
-- **Status:** Accepted
+- **Status:** **Final: shipped.**
 
 ### D-30 ★ The hard set caught the fallback inventing work, so it was replaced
 - **What happened:** the hard set (`evals/results/2026-11-04T02-59-09-733Z/`) has 3 cases at k=3: right answer with wrong work, sloppy but correct work, and a truly unreadable drawing.
@@ -512,7 +513,7 @@ Status values:
   - **Exposure:** about 135 classes in a full outage would drain the $50 key down to the budget guard's $5 floor (D-07). At that point grading stops and work queues for the teacher rather than overspending. The guard bounds the risk; it does not remove it. For a real deployment, alert on the share of grades from the fallback.
 - **Config only:** `GRADING_FALLBACK_MODELS` and `GRADING_PROVIDER_ORDER`. The eval still measures each model alone, with no fallback and no order.
 - **Refs:** P9, P14, P17, P25; amends D-19
-- **Status:** Accepted (Saarthak, 2026-11-03)
+- **Status:** **Final: shipped** (Saarthak, 2026-11-03).
 
 ### D-31 ★ What the load test changed
 - **Transfer budget shaped the code.** Measuring Neon transfer (5 GB/month on Free, shared with prod) found that the score moment had put every submitted drawing into each student poll. The drawing is now a one-time fetch, and polls carry scores only. Each run projects its database transfer before it starts and refuses above a limit.
@@ -520,7 +521,7 @@ Status values:
 - **The crash switch exists only on a deploy made with `ops/deploy.sh --chaos`** (which sets `ENABLE_CHAOS=1`; the script refuses a stray `ENABLE_CHAOS` without the flag). Otherwise it returns 404, verified on prod after the chaos runs.
 - **First bottleneck, measured:** one instance grades about 9.3/s (32 worker slots ÷ ~3.4 s per call), and Cloud Run doesn't scale on queue depth. Testing-day (6.9/s) passes; 14/s fails time-to-grade without losing work. Fixes, in order of cost, are in LOADTEST.md.
 - **Refs:** P22, P24, P28–P33; D-22, D-28
-- **Status:** Accepted
+- **Status:** **Final: shipped.**
 
 ### D-32 ★ Worker slots sized by Little's law: 128
 - **Decision:** `MODEL_CONCURRENCY` 32 → **128** and `MODEL_MAX_IN_FLIGHT` 64 → **128**. The simulator's own provider cap (`SIM_MAX_CONCURRENT`) went 64 → 256, so it never limits the system under test.
@@ -528,4 +529,4 @@ Status values:
 - **Measured on prod:** step 2× went from NO-SHIP (32 running, queue 347, time to grade p95 39.8 s) to SHIP (45 running, queue 3, p95 4.9 s). Step 4× SHIP (90 running, queue 3, p95 4.9 s). Still one instance.
 - **Assumption, stated plainly:** OpenRouter and its upstream providers accept 128 concurrent calls from one key. The canary only proved ~5/s. Next ceiling, predicted: ~37.6 grades/s (128 ÷ 3.4 s). Cloud Run can't see the queue, so the fix after that is scaling workers on queue depth.
 - **Refs:** P24, P28; D-12, D-31
-- **Status:** Accepted (Saarthak asked for 96 or 128, 2026-11-04)
+- **Status:** **Final: shipped** (Saarthak asked for 96 or 128, 2026-11-04).
