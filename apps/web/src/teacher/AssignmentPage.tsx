@@ -9,7 +9,7 @@ import { usePoll } from "../lib/usePoll.ts"
 import { CopyButton } from "./CopyButton.tsx"
 import { WorkspaceLink } from "./TeacherHome.tsx"
 
-/** Stated assumption behind "time saved" (P10): a careful hand-grade of one problem. */
+/** Stated assumption behind "time saved": a careful hand-grade of one problem. */
 const MINUTES_PER_SUBMISSION = 1
 const GOBLINS_URL = "https://goblinsapp.com"
 
@@ -135,7 +135,7 @@ function ClassCodeBanner(props: { readonly a: AssignmentDetail }) {
 }
 
 // ---------------------------------------------------------------------------
-// Rubric editor (P3): text, points, add, remove, reorder; validated by the server.
+// Rubric editor: text, points, add, remove, reorder; validated by the server.
 // ---------------------------------------------------------------------------
 
 interface ItemDraft { label: string; description: string; points: number }
@@ -238,7 +238,7 @@ function RubricEditor(props: {
 }
 
 // ---------------------------------------------------------------------------
-// Report (P5, P6): "what do I do tomorrow?"
+// Report: "what do I do tomorrow?"
 // ---------------------------------------------------------------------------
 
 function ReportView(props: { readonly secret: string; readonly a: AssignmentDetail; readonly onChange: (a: AssignmentDetail) => void }) {
@@ -435,7 +435,7 @@ const downloadCsv = (report: Report) => {
 }
 
 // ---------------------------------------------------------------------------
-// One submission: work, transcription, verdicts with evidence, one-click overrides (P4).
+// One submission: work, transcription, verdicts with evidence, one-click overrides.
 // ---------------------------------------------------------------------------
 
 function SubmissionDrawer(props: { readonly secret: string; readonly id: string; readonly onClose: () => void }) {

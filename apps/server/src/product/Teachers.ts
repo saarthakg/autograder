@@ -163,7 +163,7 @@ const make = Effect.gen(function*() {
       }), { concurrency: 4 })
   })
 
-  /** Every edit is a new version; grades keep the version they used (P3, D-10). */
+  /** Every edit is a new version; grades keep the version they used (D-10). */
   const saveRubric = Effect.fn("Teachers.saveRubric")(function*(teacherId: string, problemId: string, rubric: Rubric) {
     const rows = yield* sql<{ assignmentId: string; maxPoints: number; version: number }>`
       SELECT p.assignment_id AS "assignmentId", p.max_points AS "maxPoints", p.current_rubric_version AS version
@@ -208,7 +208,7 @@ const make = Effect.gen(function*() {
     return yield* detail(teacherId, a.id)
   })
 
-  /** Share-with-a-colleague link (P10): problems and rubrics only, never student data. */
+  /** Share-with-a-colleague link: problems and rubrics only, never student data. */
   const share = Effect.fn("Teachers.share")(function*(teacherId: string, assignmentId: string) {
     const a = yield* owned(teacherId, assignmentId)
     if (a.shareSlug !== null) return { slug: a.shareSlug }
@@ -289,7 +289,7 @@ const make = Effect.gen(function*() {
     return { evaluated, risks, graded }
   }
 
-  /** The class at a glance: grid, averages, per-criterion misses, risk-ranked queue (P5, P6). */
+  /** The class at a glance: grid, averages, per-criterion misses, risk-ranked queue. */
   const report = Effect.fn("Teachers.report")(function*(teacherId: string, assignmentId: string) {
     const a = yield* owned(teacherId, assignmentId)
     const problems = (yield* problemsOf(a.id)).map(toProblemView)
@@ -409,7 +409,7 @@ const make = Effect.gen(function*() {
     })
   })
 
-  /** One click per criterion (P4); code recomputes the total, the student's view follows. */
+  /** One click per criterion; code recomputes the total, the student's view follows. */
   const override = Effect.fn("Teachers.override")(function*(teacherId: string, submissionId: string, criterionId: string, met: boolean) {
     const before = yield* submissionDetail(teacherId, submissionId)
     if (!before.criteria.some((c) => c.id === criterionId)) return yield* new InvalidRequest({ message: `unknown criterion ${criterionId}` })

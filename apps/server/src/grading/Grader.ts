@@ -27,7 +27,7 @@ export interface GradeResult {
   readonly output: GradeOutput
   /** Per-criterion met/not met, validated against the rubric. */
   readonly met: ReadonlyMap<string, boolean>
-  /** Computed here, from rubric weights, never by the model (P13). */
+  /** Computed here, from rubric weights, never by the model. */
   readonly totalPoints: number
   readonly maxPoints: number
   readonly model: string
@@ -39,7 +39,7 @@ export interface GradeResult {
   readonly calls: ReadonlyArray<ModelResponse>
 }
 
-/** The model answered twice with output we can't use: the teacher grades it (P14, P9). */
+/** The model answered twice with output we can't use: the teacher grades it. */
 export class InvalidModelOutput extends Schema.TaggedError<InvalidModelOutput>()("InvalidModelOutput", {
   message: Schema.String
 }) {}
@@ -115,7 +115,7 @@ export class Grader extends Context.Service<Grader, {
             return { ...parsed, answeredBy: response.model, servedBy: response.provider }
           })
 
-        // P14: one retry with the validation error fed back, then give up honestly.
+        // One retry with the validation error fed back, then give up honestly: the teacher grades it.
         const { output, met, answeredBy, servedBy } = yield* attempt(undefined).pipe(
           Effect.catchTag("InvalidModelOutput", (e) =>
             attempt(

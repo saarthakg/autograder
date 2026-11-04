@@ -9,9 +9,9 @@ const decodeRubric = Schema.decodeUnknownSync(Rubric)
 const decodeStrokes = Schema.decodeUnknownSync(Strokes)
 
 /**
- * Student flows (P2, P8): join with a class code and a name, rejoin from any
+ * Student flows: join with a class code and a name, rejoin from any
  * device with a rejoin code, submit without waiting, see scores arrive.
- * Display names never reach the model (P2): grading only sees the image.
+ * Display names never reach the model: grading only sees the image.
  */
 export class Students extends Context.Service<Students, Effect.Success<typeof make>>()("autograder/Students") {
   static readonly layer = Layer.effect(Students, Effect.suspend(() => make))

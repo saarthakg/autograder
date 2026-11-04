@@ -23,7 +23,7 @@ export interface StudentPlan {
   readonly submitAtMs: ReadonlyArray<number>
 }
 
-/** Precomputes every student's join and submit times (open model: they fire on schedule, P30). */
+/** Precomputes every student's join and submit times (open model: they fire on schedule). */
 export const buildTimeline = (s: Scenario, seed = 42): ReadonlyArray<StudentPlan> => {
   const random = rng(seed)
   const classes = classesToRun(s)

@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 
 /**
  * Everything the server reads from the environment, parsed once at startup.
- * A missing or malformed value fails boot loudly instead of defaulting silently (P20).
+ * A missing or malformed value fails boot loudly instead of defaulting silently.
  */
 export class AppConfig extends Context.Service<AppConfig, {
   readonly port: number
@@ -29,7 +29,7 @@ export class AppConfig extends Context.Service<AppConfig, {
     readonly gradingProviderOrder: ReadonlyArray<string>
     readonly rubricModel: string
     readonly timeout: Duration.Duration
-    /** Refuse model-spending work once key credit would fall below this (P25). */
+    /** Refuse model-spending work once key credit would fall below this. */
     readonly budgetFloorUsd: number
   }
   /** In-process model simulator for load-test assignments (D-28). */
@@ -47,7 +47,7 @@ export class AppConfig extends Context.Service<AppConfig, {
     readonly lease: Duration.Duration
     /** How often a running job renews its lease. */
     readonly heartbeat: Duration.Duration
-    /** Longest the idle worker sleeps without a wake; long so Neon can scale to zero (D-20 A5). */
+    /** Longest the idle worker sleeps without a wake; long so Neon can scale to zero (D-28). */
     readonly idlePoll: Duration.Duration
     /** How long in-flight jobs get after SIGTERM before we rely on leases (Cloud Run allows ~10 s). */
     readonly shutdownGrace: Duration.Duration
@@ -69,7 +69,7 @@ export class AppConfig extends Context.Service<AppConfig, {
       const chaosEnabled = (yield* Config.String("ENABLE_CHAOS").pipe(Config.withDefault(""))) === "1"
       const apiKey = yield* Config.option(Config.Redacted("OPENROUTER_API_KEY"))
       const baseUrl = yield* Config.String("MODEL_BASE_URL").pipe(Config.withDefault("https://openrouter.ai/api/v1"))
-      // Chosen by the Phase 2 eval (D-19): cheapest model clearing every gate.
+      // Chosen by the eval (D-19): cheapest model clearing every gate.
       const gradingModel = yield* Config.String("GRADING_MODEL").pipe(Config.withDefault("openai/gpt-6-luna"))
       // D-30: the hard set caught gemini-3.1-flash-lite inventing work on an unreadable drawing; sol never did.
       const gradingFallbacks = yield* Config.String("GRADING_FALLBACK_MODELS").pipe(Config.withDefault("openai/gpt-6.1-sol"))
@@ -87,7 +87,7 @@ export class AppConfig extends Context.Service<AppConfig, {
       const lease = yield* Config.Duration("JOB_LEASE").pipe(Config.withDefault(Duration.seconds(30)))
       const heartbeat = yield* Config.Duration("JOB_HEARTBEAT").pipe(Config.withDefault(Duration.seconds(10)))
       const idlePoll = yield* Config.Duration("WORKER_IDLE_POLL").pipe(Config.withDefault(Duration.minutes(60)))
-      // Defaults fitted to openai/gpt-6-luna in the Phase 2 eval: p50 3.4 s, p95 4.5 s (sigma = ln(4.5/3.4)/1.645).
+      // Defaults fitted to openai/gpt-6-luna in the eval: p50 3.4 s, p95 4.5 s (sigma = ln(4.5/3.4)/1.645).
       // The canary re-measures the real path; LOADTEST.md compares the two.
       const simulation = {
         latencyMedianMs: yield* Config.Int("SIM_LATENCY_MEDIAN_MS").pipe(Config.withDefault(3400)),

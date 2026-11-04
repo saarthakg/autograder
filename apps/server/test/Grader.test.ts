@@ -80,7 +80,7 @@ describe("Grader", () => {
       expect(model.requests[0]!.text).not.toMatch(/points?/i)
     }))
 
-  it.effect("retries once with the validation error, then succeeds (P14)", () =>
+  it.effect("retries once with the validation error, then succeeds", () =>
     Effect.gen(function*() {
       const model = scripted([reply([["c1", "met"]]), reply([["c1", "met"], ["c2", "met"], ["c3", "met"]])])
       const { result, ledger } = yield* gradeWith(model)

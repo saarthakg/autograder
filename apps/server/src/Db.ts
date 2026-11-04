@@ -5,7 +5,7 @@ import { AppConfig } from "./AppConfig.ts"
 /**
  * Postgres client for the app. In prod this is Neon's *pooled* URL (PgBouncer,
  * transaction mode), so every query must stand alone or run inside one
- * transaction: no session state, LISTEN, or session advisory locks (D-20 A4).
+ * transaction: no session state, LISTEN, or session advisory locks (D-28).
  */
 export const DbLive = Layer.unwrap(
   Effect.gen(function*() {
@@ -18,5 +18,5 @@ export const DbLive = Layer.unwrap(
   })
 )
 
-/** Client for migrations, which run over the *direct* URL (D-20 A4). */
+/** Client for migrations, which run over the *direct* URL (D-28). */
 export const directDbLayer = (url: Redacted.Redacted) => PgClient.layer({ url, maxConnections: 1 })

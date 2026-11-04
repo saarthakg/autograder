@@ -1,5 +1,5 @@
 /**
- * Per-browser conveniences only (P7): everything durable lives in Postgres.
+ * Per-browser conveniences only: everything durable lives in Postgres.
  * localStorage can be unavailable (private mode, blocked storage), so every
  * access is guarded and the app still works, just without remembering.
  */
@@ -45,7 +45,7 @@ export const studentSession = {
 
 /**
  * A stable idempotency key per (student, problem): a retried submit can't
- * double-submit (P23). Scoped by student so a second student on a shared
+ * double-submit. Scoped by student so a second student on a shared
  * Chromebook never reuses the first one's key.
  */
 export const drawingKey = (studentId: string, problemId: string) => {

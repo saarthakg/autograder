@@ -5,11 +5,11 @@ import { hitsStroke, strokePath } from "./ink.ts"
 type Tool = "pen" | "eraser"
 
 /**
- * Minimal whiteboard on perfect-freehand (P12): pen, stroke eraser, undo,
+ * Minimal whiteboard on perfect-freehand: pen, stroke eraser, undo,
  * clear. Strokes are the source of truth; the parent derives the PNG.
  */
 export function Whiteboard(props: {
-  /** Fixed width in CSS px; omit to fill the container (Chromebook-first, P11). */
+  /** Fixed width in CSS px; omit to fill the container (Chromebook-first). */
   readonly width?: number
   readonly height: number
   readonly onChange: (strokes: ReadonlyArray<Stroke>) => void
@@ -48,7 +48,7 @@ export function Whiteboard(props: {
     setStrokes([]); setHistory([]); onChange([])
   }, [props.resetKey, onChange])
 
-  // Redraw on every change; cheap at classroom stroke counts and no framework needed (P11).
+  // Redraw on every change; cheap at classroom stroke counts and no framework needed.
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext("2d")

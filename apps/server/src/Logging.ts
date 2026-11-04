@@ -12,7 +12,7 @@ const severity: Record<string, string> = {
 
 /**
  * One JSON object per line with a `severity` field, which Cloud Logging maps
- * to log levels, so errors and warnings filter properly in the console (P26).
+ * to log levels, so errors and warnings filter properly in the console.
  */
 export const CloudLogger = Logger.layer([
   Logger.formatStructured.pipe(

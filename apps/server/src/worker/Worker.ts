@@ -15,11 +15,11 @@ const DB_ERROR_PAUSE = Duration.seconds(5)
  * The grading worker (D-12, D-27). One loop claims jobs while a local permit
  * is free; each job runs in its own fiber. When idle it sleeps until the
  * earliest of: a wake from the API, the next due retry or lease expiry, or
- * `idlePoll`, so an idle system issues ~no queries and Neon can suspend (D-20 A5).
+ * `idlePoll`, so an idle system issues ~no queries and Neon can suspend (D-28).
  *
  * Shutdown (SIGTERM, ~10 s on Cloud Run): stop claiming, give in-flight jobs
  * `shutdownGrace`, then interrupt. Interrupted jobs keep their lease, which
- * expires and is swept by the next worker, so nothing is lost (D-20 A3).
+ * expires and is swept by the next worker, so nothing is lost (D-28).
  */
 export const WorkerLive = Layer.effectDiscard(
   Effect.gen(function*() {
@@ -130,7 +130,7 @@ export const WorkerLive = Layer.effectDiscard(
     yield* Effect.logInfo(`worker started (concurrency ${config.worker.concurrency})`)
     yield* Effect.forkScoped(loop)
 
-    // Proof of life without traffic: the instance keeps CPU and the loop keeps running (D-20 A2).
+    // Proof of life without traffic: the instance keeps CPU and the loop keeps running (D-28).
     yield* Effect.forkScoped(
       Effect.suspend(() =>
         Effect.logInfo("worker heartbeat").pipe(

@@ -55,7 +55,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.strictEqual(created.problems[0]!.rubric.items[0]!.points, 2)
       }))
 
-    it.effect("rubric edits are validated and versioned (P3)", () =>
+    it.effect("rubric edits are validated and versioned", () =>
       Effect.gen(function*() {
         const { teacher, assignment } = yield* classroom
         const p2 = assignment.problems[1]!
@@ -115,7 +115,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
   })
 
   describe("grading loop: submit -> score -> report -> override", () => {
-    it.effect("student sees met criteria only; teacher overrides one click; both views follow (P4, D-01)", () =>
+    it.effect("student sees met criteria only; teacher overrides one click; both views follow (D-01)", () =>
       Effect.gen(function*() {
         const { teacher, student, assignment } = yield* classroom
         const p1 = assignment.problems[0]!
@@ -189,7 +189,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
       }))
   })
 
-  describe("share with a colleague (P10)", () => {
+  describe("share with a colleague", () => {
     it.effect("the template carries problems and rubrics, and copying makes the colleague's own draft", () =>
       Effect.gen(function*() {
         const { anon, teacher, assignment } = yield* classroom

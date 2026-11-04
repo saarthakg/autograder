@@ -6,7 +6,7 @@ import { AdminAuth } from "./Admin.ts"
  * Operator endpoints for the load test (D-28), behind ADMIN_TOKEN. A run
  * creates its own teacher and published classes tagged with a run_id; the
  * generator then drives them through the public student and teacher API
- * like real browsers. Analysis reads the server's own clock (P31).
+ * like real browsers. Analysis reads the server's own clock.
  */
 export const RunId = Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9-]{2,63}$/))
 
@@ -82,7 +82,7 @@ export class LoadTestApi extends HttpApiGroup.make("loadtest")
       params: { runId: RunId },
       success: Schema.Struct({ assignments: Schema.Int, teachers: Schema.Int, jobs: Schema.Int, modelCalls: Schema.Int })
     }),
-    /** Pre-load-test demo classes (Phase 2) have no teacher and no run_id. */
+    /** Cleans up demo classes from /demo-class: they have no teacher and no run_id. */
     HttpApiEndpoint.delete("deleteLegacyDemoClasses", "/legacy-demo-classes", {
       success: Schema.Struct({ assignments: Schema.Int })
     }),

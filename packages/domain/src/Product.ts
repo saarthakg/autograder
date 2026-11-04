@@ -5,7 +5,7 @@ import { Confidence, Rubric } from "./Grading.ts"
 import { Strokes } from "./Strokes.ts"
 
 /**
- * Phase 3 product API: teacher workspaces and student flows (P1, P2, D-04).
+ * Product API: teacher workspaces and student flows (D-04).
  * Identity is a capability: the teacher's secret link, the student's token.
  */
 
@@ -194,7 +194,7 @@ export class CriterionDetail extends Schema.Class<CriterionDetail>("CriterionDet
   modelMet: Schema.NullOr(Schema.Boolean),
   evidence: Schema.NullOr(Schema.String),
   override: Schema.NullOr(Schema.Boolean),
-  /** override ?? modelMet: what counts (P4). */
+  /** override ?? modelMet: what counts. */
   met: Schema.NullOr(Schema.Boolean)
 }) {}
 

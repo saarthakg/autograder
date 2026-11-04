@@ -81,7 +81,7 @@ describe("Worker (real Postgres)", () => {
       assert.strictEqual(dead.attempts, 2)
     }).pipe(Effect.scoped, Effect.provide(base)))
 
-  it.live("shutdown mid-job leaves the lease to expire, and the next worker finishes it (D-20 A3)", () =>
+  it.live("shutdown mid-job leaves the lease to expire, and the next worker finishes it (D-28)", () =>
     Effect.gen(function*() {
       yield* truncateJobs
       const q = yield* JobQueue

@@ -5,7 +5,7 @@ import { ModelError } from "./ModelClient.ts"
 
 /**
  * Refuses model-spending work once the OpenRouter key's remaining credit is
- * at or below BUDGET_FLOOR_USD (P25). Reads GET /key, cached for a minute so
+ * at or below BUDGET_FLOOR_USD. Reads GET /key, cached for a minute so
  * a busy worker doesn't double its request count.
  */
 export class BudgetGuard extends Context.Service<BudgetGuard, {

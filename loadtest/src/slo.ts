@@ -9,7 +9,7 @@ export const SloConfig = Schema.Struct({
   lostSubmissions: Schema.Struct({ max: Schema.Int }),
   /** Submits that never got a 2xx after the client's retries. */
   submitsNeverAccepted: Schema.Struct({ max: Schema.Int }),
-  /** First attempt, measured from its SCHEDULED send time (P31). */
+  /** First attempt, measured from its SCHEDULED send time. */
   submitLatencyMs: Schema.Struct({ p99: Schema.Number }),
   /** First attempts answered 5xx, timed out or failed to connect. 4xx are tracked separately. */
   submitErrorRate: Schema.Struct({ max: Schema.Number }),

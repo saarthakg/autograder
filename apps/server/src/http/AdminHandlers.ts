@@ -53,9 +53,9 @@ interface SubmissionRow {
 }
 
 /**
- * Operator endpoints behind ADMIN_TOKEN. In Phase 2 they drive real grading
- * (demo class, submit, read back) and fixture capture; Phase 3's teacher and
- * student endpoints call the same services.
+ * Operator endpoints behind ADMIN_TOKEN: smoke jobs, a demo class for driving
+ * real grading without the UI, and fixture capture. The teacher and student
+ * endpoints call the same services.
  */
 export const AdminHandlers = HttpApiBuilder.group(
   Api,

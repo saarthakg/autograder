@@ -10,7 +10,7 @@ const claimOpts = { lease, maxInFlightGlobal: 100 }
 // Real clock throughout: lease expiry and run_after are judged by Postgres now().
 layer(JobQueue.layer.pipe(Layer.provideMerge(TestDb)), { excludeTestServices: true })("JobQueue (real Postgres)", (it) => {
   describe("enqueue", () => {
-    it.effect("dedupes on dedupe_key (P23)", () =>
+    it.effect("dedupes on dedupe_key", () =>
       Effect.gen(function*() {
         yield* truncateJobs
         const q = yield* JobQueue

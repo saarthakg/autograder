@@ -3,7 +3,7 @@ import { call, friendly } from "../api.ts"
 import { navigate } from "../lib/router.ts"
 import { studentSession } from "../lib/storage.ts"
 
-/** Class code + first name, nothing else (P2). Rejoin restores the same student on any device. */
+/** Class code + first name, nothing else. Rejoin restores the same student on any device. */
 export function Join() {
   const params = new URLSearchParams(window.location.search)
   const [code, setCode] = useState(params.get("code") ?? "")

@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import { SqlError } from "effect/sql"
 
 /**
- * Database errors at the HTTP edge are unexpected (P20): they become defects,
+ * Database errors at the HTTP edge are unexpected: they become defects,
  * which the HTTP layer logs and answers with a 500, instead of leaking into
  * every endpoint's typed error list.
  */

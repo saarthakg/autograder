@@ -29,7 +29,7 @@ describe("rubricProblems", () => {
   })
 })
 
-describe("checkVerdicts + totalPoints (code computes totals, P13)", () => {
+describe("checkVerdicts + totalPoints (code computes totals)", () => {
   it("applies weights: met c1 and c3 earns 1 + 2", () => {
     const check = checkVerdicts(rubric, output([["c1", "met"], ["c2", "not_met"], ["c3", "met"]]))
     expect(check._tag).toBe("Valid")

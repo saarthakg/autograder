@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 
 /**
- * Rubrics and grading (P3, P13, D-11). The model judges each criterion as
+ * Rubrics and grading (D-11). The model judges each criterion as
  * met / not met; code owns ids, points, totals and statuses.
  */
 
@@ -52,14 +52,14 @@ export class CriterionVerdict extends Schema.Class<CriterionVerdict>("CriterionV
 
 export class GradeOutput extends Schema.Class<GradeOutput>("GradeOutput")({
   transcription: Schema.String,
-  /** false = the model abstains; the submission goes to the teacher (P9). */
+  /** false = the model abstains; the submission goes to the teacher. */
   legible: Schema.Boolean,
   criteria: Schema.Array(CriterionVerdict),
   confidence: Confidence
 }) {}
 
 // ---------------------------------------------------------------------------
-// Scoring: pure functions, the only place totals are computed (P13).
+// Scoring: pure functions, the only place totals are computed.
 // ---------------------------------------------------------------------------
 
 export type VerdictCheck =

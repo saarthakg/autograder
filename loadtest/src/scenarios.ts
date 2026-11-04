@@ -1,5 +1,5 @@
 /**
- * Testing-day shapes (D-22, P30). A scenario describes REAL-WORLD load;
+ * Testing-day shapes (D-22). A scenario describes REAL-WORLD load;
  * `speed` compresses think time and bell-schedule stagger so a run takes
  * minutes, and the generator runs 1/speed of the classes so the arrival
  * rate (submits/s) matches the real-world scenario. Each student then

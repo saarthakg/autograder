@@ -60,7 +60,7 @@ export const ReviewReason = Schema.Literals(["illegible", "invalid_output", "gra
 export class SubmitRequest extends Schema.Class<SubmitRequest>("SubmitRequest")({
   studentId: Schema.String,
   problemId: Schema.String,
-  /** Client-generated per drawing; a retried request with the same key is a no-op (P23). */
+  /** Client-generated per drawing; a retried request with the same key is a no-op. */
   idempotencyKey: Schema.String.check(Schema.isMinLength(8), Schema.isMaxLength(100)),
   strokes: Strokes,
   imagePng: Schema.Uint8ArrayFromBase64
@@ -126,7 +126,7 @@ export class FixturesDisabled extends Schema.TaggedError<FixturesDisabled>()(
 
 export class AdminApi extends HttpApiGroup.make("admin")
   .add(
-    // Phase 1 smoke path: proves API -> queue -> in-process worker end to end, deployed.
+    // Smoke path: proves API -> queue -> in-process worker end to end on a deployed instance.
     HttpApiEndpoint.post("enqueueEcho", "/jobs/echo", {
       payload: Schema.Struct({ runId: Schema.optional(Schema.String) }),
       success: JobView
@@ -136,7 +136,7 @@ export class AdminApi extends HttpApiGroup.make("admin")
       success: JobView,
       error: JobNotFound
     }),
-    // Phase 2: drive real grading before the teacher/student UI exists (Phase 3 reuses the services).
+    // Drive real grading without the UI: a demo class, then submissions against it.
     HttpApiEndpoint.post("createDemoClass", "/demo-class", { success: DemoClass }),
     HttpApiEndpoint.post("submit", "/submissions", {
       payload: SubmitRequest,

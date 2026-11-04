@@ -2,7 +2,7 @@ import type { Stroke } from "@autograder/domain"
 import { useEffect, useRef } from "react"
 import { bounds, strokePath } from "../whiteboard/ink.ts"
 
-/** Read-only render of a student's ink, fitted to the box (teacher review, P4). */
+/** Read-only render of a student's ink, fitted to the box (teacher review). */
 export function StrokeView(props: { readonly strokes: ReadonlyArray<Stroke>; readonly width: number; readonly height: number }) {
   const ref = useRef<HTMLCanvasElement | null>(null)
   useEffect(() => {

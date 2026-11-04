@@ -6,7 +6,7 @@ import { AppConfig } from "../AppConfig.ts"
  * One chat-completion call with structured output (D-14: a thin client over
  * HttpClient, so we keep OpenRouter's exact `usage.cost` and raw status codes).
  * The response body is returned as text; the caller decodes it with Schema,
- * because "invalid output" is a grading concern with its own retry rule (P14).
+ * because "invalid output" is a grading concern with its own retry rule.
  */
 export interface ModelRequest {
   readonly model: string
@@ -40,7 +40,7 @@ export interface ModelResponse {
 }
 
 /**
- * Provider failures, kept distinct because they're handled differently (P25):
+ * Provider failures, kept distinct because they're handled differently:
  * rate limits wait for Retry-After, 402 means the key is out of credit, and a
  * bad request never succeeds on retry.
  */
@@ -76,7 +76,7 @@ export class ModelClient extends Context.Service<ModelClient, {
 export interface ModelInfo {
   readonly id: string
   readonly supportedParameters: ReadonlySet<string>
-  /** USD per token, from the live catalog (P17: never trust hard-coded prices). */
+  /** USD per token, from the live catalog (prices change; never hard-code them). */
   readonly promptPrice: number
   readonly completionPrice: number
   readonly acceptsImages: boolean
@@ -141,7 +141,7 @@ const classifyStatus = (status: number): ModelErrorKind =>
 /**
  * Optional knobs are sent only when the model supports them: with
  * `require_parameters`, one unsupported parameter rules out every provider
- * (P14: check supported_parameters, don't assume). Many current models are
+ * (so check the catalog's supported_parameters, don't assume). Many current models are
  * reasoning models that reject `temperature`.
  */
 const buildBody = (request: ModelRequest, supported: ReadonlySet<string> | undefined) => {
@@ -170,7 +170,7 @@ const buildBody = (request: ModelRequest, supported: ReadonlySet<string> | undef
       type: "json_schema",
       json_schema: { name: request.schemaName, strict: true, schema: request.jsonSchema }
     },
-    // Only route to providers that honour response_format (P14). A base slug like "openai"
+    // Only route to providers that honour response_format. A base slug like "openai"
     // never matches a service-tier endpoint (openai/flex), so flex's spotty uptime stays out.
     provider: { require_parameters: true, ...(request.providerOrder?.length ? { order: request.providerOrder } : {}) },
     usage: { include: true }

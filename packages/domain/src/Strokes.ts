@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 
 /**
- * Whiteboard ink, the durable record of a student's work (P12). Each point is
+ * Whiteboard ink, the durable record of a student's work. Each point is
  * [x, y, pressure, t] in canvas pixels and ms since the stroke began. The PNG
  * sent to the model is derived from these.
  */

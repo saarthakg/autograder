@@ -9,8 +9,8 @@ const defaultBackoff: BackoffPolicy = { base: Duration.seconds(2), cap: Duration
 
 /**
  * Delay before retry number `attempt` (1-based): full jitter over an
- * exponentially growing window, capped (P24). A provider's `Retry-After` is a
- * floor, never shortened by jitter (P25). `random` is injected so tests are exact.
+ * exponentially growing window, capped. A provider's `Retry-After` is a
+ * floor, never shortened by jitter. `random` is injected so tests are exact.
  */
 export const retryDelay = (
   attempt: number,

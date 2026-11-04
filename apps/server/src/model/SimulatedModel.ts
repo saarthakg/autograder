@@ -3,8 +3,7 @@ import { AppConfig } from "../AppConfig.ts"
 import { ModelError, type ModelRequest, type ModelResponse } from "./ModelClient.ts"
 
 /**
- * The in-process model simulator for load-test assignments (D-28, P29 as
- * narrowed). Same interface as the real client, so the Grader, its retry on
+ * The in-process model simulator for load-test assignments (D-28). Same interface as the real client, so the Grader, its retry on
  * invalid output, the ledger, the queue's backoff and Retry-After handling
  * all run for real. Only the network hop to a provider is skipped.
  *

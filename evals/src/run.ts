@@ -1,5 +1,5 @@
 /**
- * Model eval (P17, D-19). Grades every drawn gold fixture with each candidate
+ * Model eval (D-19). Grades every drawn gold fixture with each candidate
  * model, k times, through the SAME Grader the app uses (prompt, schema,
  * one corrective retry), then scores the results against the gold verdicts.
  *
@@ -153,7 +153,7 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
   // With nothing drawn yet, still project the full set so the cost is known up front.
   const projectedCases = ready.length === 0 ? cases.length : ready.length
 
-  // --- live prices and capability check (P17: pull prices at eval time) --------
+  // --- live prices and capability check (prices pulled at eval time) --------
   const http = yield* HttpClient.HttpClient
   const config = yield* AppConfig
   const catalog = yield* fetchCatalog(http, config.model.baseUrl)
@@ -286,7 +286,7 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
       outputTokens: c.outputTokens, costUsd: c.costUsd, httpStatus: c.httpStatus, error: c.error
     }))
   }, null, 2))
-  // Compact, committed: per-call latency and tokens per model, to fit the load-test simulator (P29).
+  // Compact, committed: per-call latency and tokens per model, to fit the load-test simulator.
   writeFileSync(`${dir}/calibration.json`, JSON.stringify(Object.fromEntries(models.map((m) => {
     const ok = calls.filter((c) => c.model === m && c.outcome === "ok")
     return [m, {

@@ -22,7 +22,7 @@ export class DatabaseUnavailable extends Schema.TaggedError<DatabaseUnavailable>
 
 /**
  * `/health` never touches Postgres, so uptime checks don't keep Neon awake
- * (D-20 A5). `/health/ready` does, for deploy verification.
+ * (D-28). `/health/ready` does, for deploy verification.
  */
 export class SystemApi extends HttpApiGroup.make("system", { topLevel: true }).add(
   HttpApiEndpoint.get("health", "/health", { success: Health }),

@@ -1,7 +1,7 @@
 import type { ReviewQueueReason, RubricItem } from "@autograder/domain"
 
 /**
- * Pure product logic over stored grades and teacher overrides (P4, P5, D-01,
+ * Pure product logic over stored grades and teacher overrides (D-01,
  * D-06). The model's verdicts are suggestions; an override wins; code totals.
  */
 
@@ -60,7 +60,7 @@ interface ReviewCandidate {
 }
 
 /**
- * Risk ranking for the review queue (P5): failures and abstentions first, then
+ * Risk ranking for the review queue: failures and abstentions first, then
  * low/medium-confidence grades, then grades from an older rubric. Anything the
  * teacher already touched, or fully graded by hand, drops out.
  */

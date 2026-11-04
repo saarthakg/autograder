@@ -3,9 +3,9 @@ import { Context, Duration, Effect, Layer, Option, Schema } from "effect"
 import { SqlClient, SqlError } from "effect/sql"
 
 /**
- * Durable job queue on Postgres (D-12, P22). Every operation is ONE SQL
+ * Durable job queue on Postgres (D-12). Every operation is ONE SQL
  * statement, so it behaves the same through Neon's transaction-mode pooler
- * (D-20 A4). `attempts` doubles as a fencing token: a worker whose lease
+ * (D-28). `attempts` doubles as a fencing token: a worker whose lease
  * expired and was re-claimed elsewhere can no longer complete or retry it.
  */
 
@@ -26,7 +26,7 @@ export class JobRow extends Schema.Class<JobRow>("JobRow")({
 interface EnqueueInput {
   readonly kind: string
   readonly payload: unknown
-  /** Same key twice enqueues once (P23). */
+  /** Same key twice enqueues once. */
   readonly dedupeKey?: string | undefined
   readonly runId?: string | undefined
   readonly maxAttempts?: number | undefined
@@ -61,7 +61,7 @@ export class JobQueue extends Context.Service<JobQueue, {
     delay: Duration.Duration,
     options?: { readonly permanent?: boolean }
   ) => Effect.Effect<RetryOutcome, SqlError.SqlError>
-  /** Re-queues (or buries, if out of attempts) jobs whose worker died (P22). */
+  /** Re-queues (or buries, if out of attempts) jobs whose worker died. */
   readonly sweepExpired: Effect.Effect<SweepResult, SqlError.SqlError>
   /** Earliest moment something becomes actionable: a due retry or an expiring lease. */
   readonly nextDueAt: Effect.Effect<Option.Option<Date>, SqlError.SqlError>

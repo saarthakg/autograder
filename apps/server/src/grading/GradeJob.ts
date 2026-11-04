@@ -10,7 +10,7 @@ const Payload = Schema.Struct({ submissionId: Schema.String })
 const decodePayload = Schema.decodeUnknownEffect(Payload)
 const decodeRubric = Schema.decodeUnknownEffect(Rubric)
 
-/** When the budget guard trips, wait this long before trying again (P25). */
+/** When the budget guard trips, wait this long before trying again. */
 const BUDGET_RETRY = Duration.minutes(10)
 
 interface Loaded {
@@ -28,8 +28,8 @@ interface Loaded {
 /**
  * The "grade" job (D-12): load the submission and its current rubric, call the
  * grader, then write the grade and the submission's final status together.
- * Re-running a finished job is a no-op (P23). Every way out ends in a terminal
- * status; nothing is left half-graded (P9).
+ * Re-running a finished job is a no-op. Every way out ends in a terminal
+ * status; nothing is left half-graded.
  */
 export const makeGradeHandler = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
@@ -50,7 +50,7 @@ export const makeGradeHandler = Effect.gen(function*() {
                 ${result.output.legible}, ${result.output.confidence}, ${JSON.stringify(verdicts)}::jsonb,
                 ${result.totalPoints}, ${result.maxPoints}, ${result.startedAt}, ${result.finishedAt})
         ON CONFLICT (submission_id, rubric_version) DO NOTHING`
-      // An abstention is a legitimate outcome, but it's the teacher's to grade (P9).
+      // An abstention is a legitimate outcome, but it's the teacher's to grade.
       const legible = result.output.legible
       yield* sql`
         UPDATE submission
@@ -109,7 +109,7 @@ export const makeGradeHandler = Effect.gen(function*() {
   return { run, onDead } satisfies JobHandler
 })
 
-/** Maps a provider failure to the queue's retry decision (P24, P25). */
+/** Maps a provider failure to the queue's retry decision. */
 const failureFor = (error: ModelError): Effect.Effect<never, JobFailure> =>
   Effect.fail(
     error.kind === "budget_guard"

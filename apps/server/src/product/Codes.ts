@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto"
 
-/** No 0/O, 1/I/L: codes get read aloud and typed on Chromebooks (P2). */
+/** No 0/O, 1/I/L: codes get read aloud and typed on Chromebooks. */
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 export const shortCode = (length = 6): string => {

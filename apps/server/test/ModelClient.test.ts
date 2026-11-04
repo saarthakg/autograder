@@ -58,13 +58,13 @@ describe("OpenRouter ModelClient", () => {
       expect(sent.auth).toBe("Bearer test-key")
       expect(sent.body.response_format).toMatchObject({ type: "json_schema", json_schema: { strict: true } })
       expect(sent.body.provider).toEqual({ require_parameters: true })
-      // Only parameters the catalog says the model supports (P14): no temperature here.
+      // Only parameters the catalog says the model supports: no temperature here.
       expect(sent.body.temperature).toBeUndefined()
       expect(sent.body.reasoning).toEqual({ effort: "low" })
       expect(sent.body.messages[1].content[1].image_url.url).toMatch(/^data:image\/png;base64,/)
     }))
 
-  it.effect("classifies 429 with Retry-After as a retryable rate limit (P25)", () =>
+  it.effect("classifies 429 with Retry-After as a retryable rate limit", () =>
     Effect.gen(function*() {
       const err = yield* run(fakeProvider(429, { error: { message: "slow down" } }, { "retry-after": "7" })).pipe(Effect.flip)
       expect(err.kind).toBe("rate_limited")

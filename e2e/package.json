@@ -2,7 +2,7 @@
   "name": "autograder-e2e",
   "private": true,
   "type": "module",
-  "description": "Browser regression tests for the review findings (B1-B4). Not part of CI: run with ./e2e/run.sh [url].",
+  "description": "Browser regression tests for the student and teacher flows. Not part of CI: run with ./e2e/run.sh [url].",
   "scripts": {
     "test": "playwright test"
   },

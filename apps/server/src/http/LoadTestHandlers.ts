@@ -86,7 +86,7 @@ export const LoadTestHandlers = HttpApiBuilder.group(
                    percentile_cont(0.99) WITHIN GROUP (ORDER BY extract(epoch FROM graded_at - accepted_at)) AS p99,
                    max(extract(epoch FROM graded_at - accepted_at)) AS max
             FROM submission WHERE run_id = ${runId} AND graded_at IS NOT NULL`
-          // Every id the API acknowledged must exist (P22). Compared in SQL so thousands of ids are one query.
+          // Every id the API acknowledged must exist. Compared in SQL so thousands of ids are one query.
           const missing = payload.acceptedIds.length === 0 ? [] : yield* sql<{ id: string }>`
             SELECT a.id FROM unnest(${payload.acceptedIds}::text[]) AS a(id)
             WHERE NOT EXISTS (SELECT 1 FROM submission s WHERE s.id::text = a.id)`

@@ -20,10 +20,10 @@ const structured = OpenAiStructuredOutput.toCodecOpenAI(Rubric)
 const decodeRubric = Schema.decodeUnknownEffect(structured.codec)
 
 /**
- * Drafts an editable rubric when a teacher saves a problem (P3, D-08). The
+ * Drafts an editable rubric when a teacher saves a problem (D-08). The
  * draft must pass the same validation as a teacher's edit; if points don't
  * add up after one corrective retry, the caller falls back to a template.
- * Code never rescales points to make them fit (P14).
+ * Code never rescales points to make them fit.
  */
 export class RubricGenerator extends Context.Service<RubricGenerator, {
   readonly generate: (request: RubricRequest) => Effect.Effect<

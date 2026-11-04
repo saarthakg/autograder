@@ -5,7 +5,7 @@ import { MathText } from "./components/Math.tsx"
 import { ensureWorkspace } from "./Landing.tsx"
 import { navigate } from "./lib/router.ts"
 
-/** A colleague's shared assignment (P10): preview, then one click for your own copy. */
+/** A colleague's shared assignment: preview, then one click for your own copy. */
 export function SharePage(props: { readonly slug: string }) {
   const [t, setT] = useState<TemplateView | null>(null)
   const [error, setError] = useState<string | null>(null)

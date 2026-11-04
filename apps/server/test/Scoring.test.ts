@@ -5,7 +5,7 @@ import { effective, reviewRisk, studentState } from "../src/product/Scoring.ts"
 const items = [{ id: "c1", points: 1 }, { id: "c2", points: 1 }, { id: "c3", points: 2 }]
 const model = [{ id: "c1", met: true, evidence: "" }, { id: "c2", met: false, evidence: "" }, { id: "c3", met: true, evidence: "" }]
 
-describe("effective verdicts (P4)", () => {
+describe("effective verdicts", () => {
   it("totals the model's verdicts by weight", () => {
     expect(effective(items, model, {}).score).toBe(3)
   })
@@ -29,7 +29,7 @@ describe("studentState (D-06: never a made-up score)", () => {
   })
 })
 
-describe("reviewRisk (P5)", () => {
+describe("reviewRisk", () => {
   const base = { reviewReason: null, confidence: "high" as const, staleRubric: false, overridden: false, score: 4 }
   it("ranks failures above abstentions above low confidence", () => {
     const failed = reviewRisk({ ...base, status: "needs_review", reviewReason: "grading_failed", score: null })!

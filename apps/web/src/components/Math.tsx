@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 
 type Katex = typeof import("katex")
 let katexPromise: Promise<Katex> | null = null
-// Loaded on first use, so a Chromebook doesn't pay for it before a problem is on screen (P11).
+// Loaded on first use, so a Chromebook doesn't pay for it before a problem is on screen.
 const loadKatex = () => (katexPromise ??= Promise.all([import("katex"), import("katex/dist/katex.min.css")]).then(([k]) => k))
 
 /** Renders text with inline $...$ math. Falls back to the raw text until KaTeX loads. */

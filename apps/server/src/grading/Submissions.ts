@@ -20,10 +20,10 @@ interface SubmitInput {
 const isPng = (bytes: Uint8Array) => PNG_MAGIC.every((b, i) => bytes[i] === b)
 
 /**
- * Accept-and-queue (P8, P24): the submission row and its grading job commit
- * in ONE transaction, so an accepted submission can never exist without a job
- * (P22). A retried request with the same idempotency key returns the original
- * submission instead of creating a second one (P23).
+ * Accept-and-queue: the submission row and its grading job commit
+ * in ONE transaction, so an accepted submission can never exist without a job.
+ * A retried request with the same idempotency key returns the original
+ * submission instead of creating a second one.
  */
 export class Submissions extends Context.Service<Submissions, {
   readonly submit: (input: SubmitInput) => Effect.Effect<

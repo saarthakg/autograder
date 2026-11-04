@@ -2,13 +2,13 @@ import { expect, test } from "@playwright/test"
 import { drawPolyline, inkPixels, joinOn, joinStudent, problemChip, publish, scribble, startSample } from "./helpers.ts"
 
 /**
- * Regression tests for the outsider UI review (2026-11-04), one per "Broken" finding.
+ * Browser regression tests for the student and teacher flows that unit tests can't reach.
  * They drive the real UI with real pointer input against E2E_BASE_URL.
  */
 
 const X_EQUALS: ReadonlyArray<readonly [number, number]> = [[40, 40], [80, 90], [60, 65], [40, 90], [80, 40]]
 
-test("B1: an unsubmitted drawing survives a page reload", async ({ page, browser }) => {
+test("an unsubmitted drawing survives a page reload", async ({ page, browser }) => {
   await startSample(page)
   const code = await publish(page)
   const { page: student, context } = await joinStudent(browser, code, "Reload", { width: 820, height: 1180 })
@@ -22,7 +22,7 @@ test("B1: an unsubmitted drawing survives a page reload", async ({ page, browser
   await context.close()
 })
 
-test("B2: switching problems keeps each draft, and a second student on the same browser starts blank", async ({ page, browser }) => {
+test("switching problems keeps each draft, and a second student on the same browser starts blank", async ({ page, browser }) => {
   await startSample(page)
   const code = await publish(page)
   const { page: student, context } = await joinStudent(browser, code, "Tabs")
@@ -38,7 +38,7 @@ test("B2: switching problems keeps each draft, and a second student on the same 
   await context.close()
 })
 
-test("B3: after the teacher grades a flagged item by hand, the assignment list agrees with the report", async ({ page, browser }) => {
+test("after the teacher grades a flagged item by hand, the assignment list agrees with the report", async ({ page, browser }) => {
   await startSample(page)
   const code = await publish(page)
   const { page: student, context } = await joinStudent(browser, code, "Scribbler")
@@ -68,7 +68,7 @@ test("B3: after the teacher grades a flagged item by hand, the assignment list a
   await expect(row).not.toContainText("to check")
 })
 
-test("B4: Publish saves pending rubric edits, and leaving with unsaved edits asks first", async ({ page }) => {
+test("Publish saves pending rubric edits, and leaving with unsaved edits asks first", async ({ page }) => {
   await startSample(page)
   const firstLabel = page.getByLabel("What a student did (shown to them when met)").first()
   await firstLabel.fill("Subtracts 5 from both sides")

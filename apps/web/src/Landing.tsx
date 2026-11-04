@@ -3,7 +3,7 @@ import { call, friendly } from "./api.ts"
 import { navigate } from "./lib/router.ts"
 import { teacherSecret } from "./lib/storage.ts"
 
-/** Gets (or silently creates) the teacher's workspace secret: no signup wall (P1, D-04). */
+/** Gets (or silently creates) the teacher's workspace secret: no signup wall (D-04). */
 export const ensureWorkspace = async (): Promise<string | null> => {
   const existing = teacherSecret.read()
   if (existing) return existing

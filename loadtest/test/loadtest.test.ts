@@ -4,7 +4,7 @@ import { DEFAULT_SLO, evaluate, type Measured } from "../src/slo.ts"
 import { percentile } from "../src/stats.ts"
 import { buildTimeline, peakRate } from "../src/timeline.ts"
 
-describe("timeline (P30)", () => {
+describe("timeline", () => {
   it("is reproducible, and running at N× speed with 1/N of the classes keeps the real-world arrival rate", () => {
     const real = { ...SCENARIOS["testing-day"]!, speed: 1 }
     const fast = SCENARIOS["testing-day"]!

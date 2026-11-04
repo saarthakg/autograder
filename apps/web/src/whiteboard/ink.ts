@@ -1,7 +1,7 @@
 import type { Stroke, StrokePoint } from "@autograder/domain"
 import { getStroke } from "perfect-freehand"
 
-/** Shared pen look: the canvas and the PNG sent to the model must match (P16). */
+/** Shared pen look: the canvas and the PNG sent to the model must match. */
 const PEN = { size: 4, thinning: 0.5, smoothing: 0.5, streamline: 0.5 } as const
 
 type Pt = { readonly points: ReadonlyArray<StrokePoint> }
@@ -33,7 +33,7 @@ export const bounds = (strokes: ReadonlyArray<Pt>) => {
 }
 
 /**
- * The image the model sees, derived from the strokes (D-13, P16): cropped to
+ * The image the model sees, derived from the strokes (D-13): cropped to
  * the ink plus padding, black on white (effectively grayscale), long side
  * capped. Digital ink on a clean canvas removes most photo-quality failures.
  */

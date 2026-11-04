@@ -4,7 +4,7 @@ import { FetchHttpClient, HttpClientRequest } from "effect/http"
 import { HttpApiClient, HttpApiMiddleware } from "effect/http-api"
 
 /**
- * One typed client derived from the shared contract (P21): a renamed field
+ * One typed client derived from the shared contract: a renamed field
  * or endpoint in packages/domain breaks the web build, not production.
  */
 const makeClient = HttpApiClient.make(Api, { baseUrl: window.location.origin })
@@ -31,7 +31,7 @@ type Outcome<A> =
   | { readonly ok: true; readonly value: A }
   | { readonly ok: false; readonly tag: string; readonly message: string; readonly error: unknown }
 
-/** Runs one API call; never throws, so every screen handles failure explicitly (P9). */
+/** Runs one API call; never throws, so every screen handles failure explicitly. */
 export const call = <A, E>(tokens: Tokens, f: (client: Client) => Effect.Effect<A, E>): Promise<Outcome<A>> =>
   Effect.runPromise(
     makeClient.pipe(
@@ -48,6 +48,6 @@ export const call = <A, E>(tokens: Tokens, f: (client: Client) => Effect.Effect<
     )
   )
 
-/** Friendly copy for failures a person might hit (P9: honest, calm states). */
+/** Friendly copy for failures a person might hit (honest, calm states). */
 export const friendly = (o: { tag: string; message: string }) =>
   o.tag === "HttpClientError" ? "Can't reach the server. Check your connection and try again." : o.message

@@ -83,7 +83,7 @@ const submitOne = (key: string = crypto.randomUUID()) =>
 
 layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (it) => {
   describe("submit", () => {
-    it.effect("writes the submission and its grade job together (P22)", () =>
+    it.effect("writes the submission and its grade job together", () =>
       Effect.gen(function*() {
         const { res } = yield* submitOne()
         assert.isTrue(res.created)
@@ -92,7 +92,7 @@ layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (i
         assert.deepStrictEqual(jobs.map((j) => j.kind), ["grade"])
       }))
 
-    it.effect("a retried request with the same key returns the same submission (P23)", () =>
+    it.effect("a retried request with the same key returns the same submission", () =>
       Effect.gen(function*() {
         const { ids, res } = yield* submitOne("same-key")
         const again = yield* (yield* Submissions).submit({ studentId: ids.studentId, problemId: ids.problemId, idempotencyKey: "same-key", strokes: STROKES, imagePng: PNG })
@@ -135,7 +135,7 @@ layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (i
         assert.strictEqual(grades[0]!.maxPoints, 4)
       }))
 
-    it.effect("an abstention goes to the teacher as illegible, with no score shown (P9)", () =>
+    it.effect("an abstention goes to the teacher as illegible, with no score shown", () =>
       Effect.gen(function*() {
         nextOutcome = result([], false)
         const { res } = yield* submitOne()
@@ -143,7 +143,7 @@ layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (i
         assert.deepStrictEqual([sub.status, sub.reviewReason], ["needs_review", "illegible"])
       }))
 
-    it.effect("two invalid answers go to the teacher, never a coerced grade (P14)", () =>
+    it.effect("two invalid answers go to the teacher, never a coerced grade", () =>
       Effect.gen(function*() {
         nextOutcome = new InvalidModelOutput({ message: "bad" })
         const { res } = yield* submitOne()

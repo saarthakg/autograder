@@ -14,7 +14,7 @@ import { Whiteboard } from "../whiteboard/Whiteboard.tsx"
 const GOBLINS_URL = "https://goblinsapp.com"
 
 /**
- * The student's assignment. Submit never waits on the grader (P8): it returns
+ * The student's assignment. Submit never waits on the grader: it returns
  * at once and "Next problem" works immediately. If the student stays, the
  * score fills in next to their work; it also appears on that problem's chip.
  */
@@ -164,7 +164,7 @@ function ProblemScreen(props: {
   const submit = async () => {
     setBusy(true); setError(null)
     const png = await renderPng(strokes)
-    // Same key on a retry (double-tap, flaky wifi): the server keeps one submission (P23).
+    // Same key on a retry (double-tap, flaky wifi): the server keeps one submission.
     const r = await call({ student: props.token }, (c) => c.student.submit({
       payload: { problemId: p.id, idempotencyKey: drawingKey(props.studentId, p.id), strokes, imagePng: png }
     }))
@@ -198,7 +198,7 @@ function ProblemScreen(props: {
 /**
  * The score moment: the student's own work beside its score. Task-framed,
  * never ego-framed (D-01, Butler): what the work did, not a rank, and "Not
- * yet" in neutral ink, never red. "Next" never waits on the grader (P8).
+ * yet" in neutral ink, never red. "Next" never waits on the grader.
  */
 function Submitted(props: {
   readonly problem: StudentProblem

@@ -20,7 +20,7 @@ export interface ModelRow {
   readonly samples: ReadonlyArray<Sample>
 }
 
-/** Cheapest cheap model that clears every gate; otherwise the best one, said plainly (D-19 amendment). */
+/** Cheapest cheap model that clears every gate; otherwise the best one, said plainly (D-19). */
 export const recommend = (rows: ReadonlyArray<ModelRow>) => {
   const cheapRows = rows.filter((m) => m.role === "cheap")
   const passing = cheapRows.filter((m) => m.gates.every((g) => g.pass)).sort((a, b) => a.metrics.costPerGradeUsd - b.metrics.costPerGradeUsd)

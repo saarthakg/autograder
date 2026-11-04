@@ -13,7 +13,7 @@ import { buildTimeline, peakRate, type StudentPlan } from "./timeline.ts"
  * earlier ones finished), and poll with the web app's own backoff while a
  * score is pending. Teachers poll their report. Latency is scored against
  * each request's SCHEDULED send time, so a slow server can't hide by slowing
- * the generator down (P31).
+ * the generator down.
  */
 interface RunOptions {
   readonly target: string
@@ -93,7 +93,7 @@ const ok = (s: number) => s >= 200 && s < 300
 const retryable = (s: number) => s === 0 || s >= 500 || s === 429
 
 /**
- * Real fixture drawings, pre-serialised per sample problem (P30). Only the
+ * Real fixture drawings, pre-serialised per sample problem. Only the
  * smallest legible drawing per problem is used: Neon Free's 5 GB/month
  * transfer is shared with prod, and the grade job reads each image back.
  */
@@ -211,7 +211,7 @@ export const runLoadTest = (o: RunOptions) =>
           const sample = SAMPLE_PROBLEMS[(p.position - 1) % SAMPLE_PROBLEMS.length]!.key
           const v = payloads.get(sample) ?? [...payloads.values()][0]!
           const body = `{"problemId":${JSON.stringify(p.id)},"idempotencyKey":"${crypto.randomUUID()}","strokes":${v.strokes},"imagePng":"${v.png}"}`
-          // A real student whose submit fails presses Submit again: same key, so never a double submission (P23).
+          // A real student whose submit fails presses Submit again: same key, so never a double submission.
           let first: Res | null = null
           let accepted: string | null = null
           let attempts = 0
