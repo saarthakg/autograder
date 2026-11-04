@@ -46,23 +46,21 @@ The gates discriminate: Qwen3-VL failed four of them ([results](evals/results/20
 
 The statement of confidence, the 1k → 1M ladder and the bug the load test caught are in [`LOADTEST.md`](LOADTEST.md).
 
-## If I'd stopped at the time budget
+## What I'd do next
 
-A 150-minute version ships:
-- the core slice
-- simple grading: one model, a retry, then review
-- one testing-day load test with zero lost work
+In order of value:
 
-Depth past that:
-- the eval's confidence intervals and hard set
-- provider failover
-- heartbeat leases and chaos runs
-- breakpoint steps, the canary and transfer measurement
-- an outsider UI review with Playwright regressions
+1. Scale the worker on queue depth instead of HTTP traffic, the first move at 10k students.
+2. Per-district fair queuing and multi-provider routing for the model calls.
+3. A confidence cascade: re-grade low-confidence results with the stronger model.
+4. Re-grade on rubric edit, re-scoring from the stored transcription.
+5. Sync in-progress drafts across devices.
+6. Worksheet PDF or photo upload that turns into problems.
+7. Stroke replay and misconception clustering in the report.
 
 ## What we left out and why
 
-The time went to the core flow and the evidence behind it. These are deferrals, not unknowns:
+These are deferrals, not unknowns:
 
 - **Submit confirmation (D-02).** "You get one try per problem" sits beside the button instead.
 - **A fourth sample problem (D-09) and a 36-case gold set (D-18).** These shipped as three problems and 20 cases, plus the hard set.

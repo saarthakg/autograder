@@ -51,7 +51,7 @@ Each entry carries a **final status**:
 
 ### D-28 ★ One public service, load-tested where it runs
 - **Decision:** one Cloud Run service (`us-east4`, `--no-cpu-throttling`, min 0, max 3, 1 vCPU / 512 MiB) runs the API, web app and grading worker in one process, on Neon Postgres. The load test hits the same public URL with admin-created `simulated` assignments, graded by an in-process simulator with calibrated latency and injected 429/5xx. A 50-call real-model canary calibrates it.
-- **Why:** the brief asks for a public app plus a cheap, re-runnable load test in about 75 minutes per part. The first plan (D-20, D-27) had split API and worker services, a separate load-test environment and database, a deployed fake model, Secret Manager, IAM and a CI workflow, which took time from the product.
+- **Why:** the brief asks for a public app plus a cheap, re-runnable load test. The first plan (D-20, D-27) had split API and worker services, a separate load-test environment and database, a deployed fake model, Secret Manager, IAM and a CI workflow: more infrastructure than the brief needs.
 - **Trade-off, named:** load-test traffic shares prod's instance and database. Rows are tagged by `run_id` and deleted. The cut items are next steps in LOADTEST.md.
 - **Status:** Shipped (approved 2026-11-02). Supersedes D-20 and D-27.
 

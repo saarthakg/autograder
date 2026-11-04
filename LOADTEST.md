@@ -59,7 +59,7 @@ Peak arrival ≈ **0.0058 submits/s per student** (6.9/s for 1,200). Model call 
 | **100,000** | 580 | ~2,000 | Provider capacity is the constraint: several providers and keys, negotiated limits. Images in object storage, not Postgres. A partitioned or managed queue. Polling (~3,000 req/s) moves to push (SSE) or cached status. | ~$300 |
 | **1,000,000** | 5,800 | ~20,000 | Dedicated model throughput or a self-hosted grader for common cases; Postgres sharded per district; event-driven status; multi-region. Caching identical answer-only submissions cuts calls. | ~$3,000 |
 
-## Next steps (cut for time, D-28)
+## Next steps (D-28)
 
 - A worker split from the API and autoscaled on queue depth.
 - A sustained real-provider test at 30+ calls/s, with OpenRouter's limits confirmed in writing.
