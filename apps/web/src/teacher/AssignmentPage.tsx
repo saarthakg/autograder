@@ -1,5 +1,5 @@
 import { type AssignmentDetail, type ProblemView, type Report, Rubric, RubricItem, type SubmissionDetail } from "@autograder/domain"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { call, friendly } from "../api.ts"
 import { MathText } from "../components/Math.tsx"
 import { StrokeView } from "../components/StrokeView.tsx"
@@ -16,7 +16,38 @@ export function AssignmentPage(props: { readonly secret: string; readonly id: st
   const [a, setA] = useState<AssignmentDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<"report" | "rubrics">("report")
+  const [blocked, setBlocked] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState(false)
   const t = { teacher: props.secret }
+
+  // Unsaved rubric edits are never dropped silently (publish, leave, reload).
+  const editors = useRef(new Map<string, EditorHandle>())
+  const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set())
+  const register = useCallback((id: string, h: EditorHandle | null) => { h ? editors.current.set(id, h) : editors.current.delete(id) }, [])
+  const onDirty = useCallback((id: string, d: boolean) => setDirty((s) => {
+    if (s.has(id) === d) return s
+    const next = new Set(s); d ? next.add(id) : next.delete(id); return next
+  }), [])
+  useEffect(() => {
+    if (dirty.size === 0) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [dirty])
+  /** Saves every edited rubric; false (with a message) if one can't be saved. */
+  const saveAll = async (): Promise<boolean> => {
+    const pending = [...dirty].map((id) => editors.current.get(id)).filter((h) => h !== undefined)
+    const invalid = pending.filter((h) => !h.valid())
+    if (invalid.length > 0) {
+      setBlocked(`Problem ${invalid.map((h) => h.position).join(", ")}: the criteria must add up to the problem's points. Fix or undo that edit first.`)
+      return false
+    }
+    for (const h of pending) {
+      if (!(await h.save())) { setBlocked(`Couldn't save the rubric for problem ${h.position}. See the message under it.`); return false }
+    }
+    setBlocked(null)
+    return true
+  }
 
   const load = useCallback(async () => {
     const r = await call(t, (c) => c.teacher.getAssignment({ params: { id: props.id } }))
@@ -32,15 +63,32 @@ export function AssignmentPage(props: { readonly secret: string; readonly id: st
     r.ok ? setA(r.value) : setError(friendly(r))
   }
 
+  const publish = async () => {
+    if (dirty.size > 0 && !(await saveAll())) return
+    await act((c) => c.teacher.publish({ params: { id: a.id } }))
+  }
+  const editorProps = { secret: props.secret, onSaved: load, register, onDirty }
+
   return (
     <main className="page">
-      <nav className="crumbs"><button className="link" onClick={() => navigate("/t")}>← All assignments</button></nav>
+      <nav className="crumbs"><button className="link" onClick={() => dirty.size > 0 ? setLeaving(true) : navigate("/t")}>← All assignments</button></nav>
+      {leaving && (
+        <div className="notice row-between" role="alert">
+          <span>You have unsaved rubric changes.</span>
+          <span className="row">
+            <button className="primary" onClick={async () => { if (await saveAll()) navigate("/t"); else setLeaving(false) }}>Save and leave</button>
+            <button onClick={() => navigate("/t")}>Leave without saving</button>
+            <button className="link" onClick={() => setLeaving(false)}>Stay</button>
+          </span>
+        </div>
+      )}
       <header className="page-head">
         <h1>{a.title}</h1>
         {a.status === "draft" && (
-          <button className="primary big" onClick={() => act((c) => c.teacher.publish({ params: { id: a.id } }))}>Publish and get a class code</button>
+          <button className="primary big" onClick={publish}>{dirty.size > 0 ? "Save changes and publish" : "Publish and get a class code"}</button>
         )}
       </header>
+      {blocked && <p className="error" role="alert">{blocked}</p>}
 
       {a.status === "draft" ? (
         <>
@@ -48,7 +96,7 @@ export function AssignmentPage(props: { readonly secret: string; readonly id: st
           {a.rubricFallbacks.length > 0 && (
             <p className="notice">We couldn't draft a rubric for {a.rubricFallbacks.length === 1 ? "one problem" : `${a.rubricFallbacks.length} problems`}, so there's a simple starter. Please fill it in.</p>
           )}
-          {a.problems.map((p) => <RubricEditor key={p.id} secret={props.secret} problem={p} onSaved={load} />)}
+          {a.problems.map((p) => <RubricEditor key={p.id} problem={p} {...editorProps} />)}
         </>
       ) : (
         <>
@@ -57,9 +105,11 @@ export function AssignmentPage(props: { readonly secret: string; readonly id: st
             <button role="tab" aria-selected={tab === "report"} onClick={() => setTab("report")}>Class report</button>
             <button role="tab" aria-selected={tab === "rubrics"} onClick={() => setTab("rubrics")}>Rubrics</button>
           </div>
-          {tab === "report"
-            ? <ReportView secret={props.secret} a={a} onChange={setA} />
-            : a.problems.map((p) => <RubricEditor key={p.id} secret={props.secret} problem={p} onSaved={load} />)}
+          {tab === "report" && <ReportView secret={props.secret} a={a} onChange={setA} />}
+          {/* Kept mounted while hidden, so switching tabs never discards an edit. */}
+          <div hidden={tab !== "rubrics"}>
+            {a.problems.map((p) => <RubricEditor key={p.id} problem={p} {...editorProps} />)}
+          </div>
         </>
       )}
       <WorkspaceLink secret={props.secret} />
@@ -89,7 +139,19 @@ function ClassCodeBanner(props: { readonly a: AssignmentDetail }) {
 
 interface ItemDraft { label: string; description: string; points: number }
 
-function RubricEditor(props: { readonly secret: string; readonly problem: ProblemView; readonly onSaved: () => void }) {
+interface EditorHandle {
+  readonly position: number
+  readonly valid: () => boolean
+  readonly save: () => Promise<boolean>
+}
+
+function RubricEditor(props: {
+  readonly secret: string
+  readonly problem: ProblemView
+  readonly onSaved: () => void
+  readonly register: (id: string, h: EditorHandle | null) => void
+  readonly onDirty: (id: string, dirty: boolean) => void
+}) {
   const p = props.problem
   const [items, setItems] = useState<Array<ItemDraft>>(p.rubric.items.map((i) => ({ label: i.label, description: i.description, points: i.points })))
   const [ref, setRef] = useState(p.rubric.referenceSolution)
@@ -103,15 +165,27 @@ function RubricEditor(props: { readonly secret: string; readonly problem: Proble
     const next = [...xs]; const [x] = next.splice(i, 1); next.splice(i + d, 0, x!); return next
   })
 
-  const save = async () => {
+  const save = async (): Promise<boolean> => {
     const rubric = new Rubric({
       items: items.map((x, i) => new RubricItem({ id: `c${i + 1}`, label: x.label.trim(), description: x.description.trim(), points: x.points })),
       referenceSolution: ref.trim()
     })
     const r = await call({ teacher: props.secret }, (c) => c.teacher.saveRubric({ params: { id: p.id }, payload: rubric }))
-    if (r.ok) { setProblems([]); setSaved(true); props.onSaved() }
-    else setProblems(r.tag === "InvalidRubric" ? (r.error as { problems: ReadonlyArray<string> }).problems : [r.tag === "SchemaError" ? "Each criterion needs a short label (60 characters max) and a description." : friendly(r)])
+    if (r.ok) { setProblems([]); setSaved(true); props.onSaved(); return true }
+    setProblems(r.tag === "InvalidRubric" ? (r.error as { problems: ReadonlyArray<string> }).problems : [r.tag === "SchemaError" ? "Each criterion needs a short label (60 characters max) and a description." : friendly(r)])
+    return false
   }
+
+  // Let the page publish or leave safely: it can ask whether this editor is valid and save it.
+  const latest = useRef({ save, valid: () => sum === p.maxPoints })
+  latest.current = { save, valid: () => sum === p.maxPoints }
+  const { register, onDirty } = props
+  useEffect(() => {
+    register(p.id, { position: p.position, valid: () => latest.current.valid(), save: () => latest.current.save() })
+    return () => register(p.id, null)
+  }, [register, p.id, p.position])
+  useEffect(() => { onDirty(p.id, dirty) }, [onDirty, p.id, dirty])
+  useEffect(() => () => onDirty(p.id, false), [onDirty, p.id])
 
   return (
     <section className="rubric-card">
@@ -146,7 +220,10 @@ function RubricEditor(props: { readonly secret: string; readonly problem: Proble
       </label>
       <div className="row-between">
         <span className={sum === p.maxPoints ? "ok small" : "error small"}>Points: {sum} of {p.maxPoints}</span>
-        <button className="primary" disabled={!dirty || sum !== p.maxPoints} onClick={save}>{saved && !dirty ? "Saved ✓" : "Save rubric"}</button>
+        <span className="row">
+          {dirty && <span className="pill warn">Unsaved changes</span>}
+          <button className="primary" disabled={!dirty || sum !== p.maxPoints} onClick={save}>{saved && !dirty ? "Saved ✓" : "Save rubric"}</button>
+        </span>
       </div>
       {problems.length > 0 && <ul className="error small">{problems.map((m) => <li key={m}>{m}</li>)}</ul>}
     </section>
