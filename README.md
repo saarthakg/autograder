@@ -4,6 +4,12 @@ A teacher creates an assignment and gets an editable AI-drafted rubric. Students
 
 **Live:** https://autograder-768677959450.us-east4.run.app
 
+**Try it (a sample class set up for reviewers):**
+- **Teacher:** https://autograder-768677959450.us-east4.run.app/t#k=ra8F54Zo8LWoUTegBHKgqw. Opens the class report; anyone with this link sees this one class.
+- **Students:** https://autograder-768677959450.us-east4.run.app/join?code=GNKBVE (class code **GNKBVE**). Open it in a private window, so the student and teacher sessions stay separate.
+
+**Load test:** [`LOADTEST.md`](LOADTEST.md) is the statement of confidence; `bun run loadtest --scenario testing-day --target <url>` re-runs it.
+
 > The full README (60-second demo path, headline decisions, what we left out and why, what's next) arrives in the final phase. The decision log is in [`DECISIONS.md`](DECISIONS.md); the design is in [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Run locally
