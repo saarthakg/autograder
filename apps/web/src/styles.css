@@ -203,6 +203,7 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .empty-state p { margin-top: 0; }
 .settings-row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; margin-top: 1.5rem; padding: 0.8rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .field.inline { flex-direction: row; align-items: center; gap: 0.6rem; margin: 0; }
+.field.inline > span { white-space: nowrap; }
 .completion { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; text-align: center; }
 .completion .summary { list-style: none; padding: 0; margin: 1rem 0; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 .template-problems li { margin: 0.4rem 0; }
