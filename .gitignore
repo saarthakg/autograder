@@ -35,3 +35,9 @@ coverage/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# e2e: local deps, per-run workspace records, Playwright output
+e2e/node_modules/
+e2e/.runs/
+e2e/test-results/
+e2e/playwright-report/
