@@ -454,6 +454,10 @@ function SubmissionDrawer(props: { readonly secret: string; readonly id: string;
     const r = await call(t, (c) => c.teacher.override({ params: { id: props.id, criterionId }, payload: { met } }))
     if (r.ok) setD(r.value)
   }
+  /** Hand-grade a flagged item in one click: every criterion met, or none. */
+  const setAll = async (met: boolean) => {
+    for (const c of d?.criteria ?? []) if (c.met !== met) await set(c.id, met)
+  }
 
   return (
     <div className="drawer-backdrop" onClick={props.onClose}>
@@ -472,6 +476,15 @@ function SubmissionDrawer(props: { readonly secret: string; readonly id: string;
                 <summary className="small">What the grader read</summary>
                 <pre className="transcription">{d.transcription}</pre>
               </details>
+            )}
+            {d.score === null && d.status !== "grading" && (
+              <div className="hand-grade row-between">
+                <span className="small">Set every criterion to finish grading this one ({d.criteria.filter((c) => c.met !== null).length} of {d.criteria.length} set).</span>
+                <span className="row">
+                  <button onClick={() => setAll(true)}>All met</button>
+                  <button onClick={() => setAll(false)}>None met</button>
+                </span>
+              </div>
             )}
             <ul className="verdicts">
               {d.criteria.map((c) => (
