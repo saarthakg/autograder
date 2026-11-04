@@ -95,4 +95,4 @@ The other commands:
 - `./e2e/run.sh [url]`: browser tests. They're not in CI, because one grades a submission for real.
 - `ops/deploy.sh [--chaos]`: deploys to Cloud Run.
 
-Built with Claude Code.
+Built with Claude Code; how I directed it is in [`AGENTS.md`](AGENTS.md).
