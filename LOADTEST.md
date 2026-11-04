@@ -11,6 +11,8 @@ bun run loadtest --scenario testing-day --target https://autograder-768677959450
 bun run loadtest --scenario step --scale 4 --target https://autograder-768677959450.us-east4.run.app
 ```
 
+The CLI reads `ADMIN_TOKEN` from `.env` (or `--admin-token`) and drives the admin endpoints under `/api/admin/loadtest/*` (create tagged classes, read queue metrics, analyze a run, delete it); every one of them requires that token as a Bearer header.
+
 ## What it handles (measured on the public URL, 2026-11-04)
 
 | Run | Load | Verdict | What happened |
@@ -44,7 +46,7 @@ Nothing else was close. Polls answered in p99 73 ms, there were no submit errors
 
 - **The simulator tests our system, not the provider.** The queue, worker, retries and backoff, leases, Postgres and HTTP all run for real. Only the model's network hop is simulated, with latency fitted to the eval and injected 429s (2%), 5xx (1%) and invalid output (0.5%).
 - **Simulator vs reality:** the canary's real latency (p50 2.8 s, p95 3.5 s) is about 20% *faster* than the simulator's (3.4 s, 4.5 s), so the capacity numbers are conservative on latency. They aren't conservative on rate limits, which the canary can't show at 5/s.
-- **It found a real bug.** Measuring database transfer before the first big run showed that every student poll was carrying the student's submitted drawings. A Phase 3 change caused it, and the unit and e2e tests had all passed. One testing day would have burned a large share of Neon's 5 GB monthly transfer cap. We fixed it before running (the drawing is now fetched once) and measured ~35 KB per submission afterwards.
+- **It found a real bug.** Measuring database transfer before the first big run showed that every student poll was carrying the student's submitted drawings. An earlier UI change caused it, and the unit and e2e tests had all passed. One testing day would have burned a large share of Neon's 5 GB monthly transfer cap. We fixed it before running (the drawing is now fetched once) and measured ~35 KB per submission afterwards.
 - **The load generator** is one laptop over the public internet, so client latencies include that network hop. Speed N runs 1/N of the classes N× faster, which keeps the arrival rate equal to the real-world scenario. It doesn't create the full count of student rows.
 - **Shared with prod:** runs share the prod instance and the Neon database, tagged by `run_id` and deleted afterwards. Each run projects its transfer before it starts. The whole campaign used about 0.65 GB of the 2 GB we budgeted.
 
