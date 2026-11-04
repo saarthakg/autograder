@@ -102,7 +102,7 @@ const chipClass = (p: StudentProblem) => p.submission === null ? "todo" : p.subm
 const chipLabel = (p: StudentProblem) =>
   p.submission === null ? "to do" :
   p.submission.state === "grading" ? "checking…" :
-  p.submission.state === "teacher_check" ? "teacher" :
+  p.submission.state === "teacher_check" ? "teacher will check" :
   `${p.submission.score}/${p.maxPoints}`
 
 const decodeDraft = (raw: unknown) => {
@@ -209,7 +209,9 @@ function Completion(props: { readonly home: StudentHome }) {
       <h2>All done! 🎉</h2>
       <p>Nice work showing your thinking. Scores appear as they're checked, and your teacher may adjust them.</p>
       <ul className="summary">
-        {props.home.problems.map((p) => <li key={p.id}>Problem {p.position}: {chipLabel(p)}</li>)}
+        {props.home.problems.map((p) => (
+          <li key={p.id}>Problem {p.position}: {p.submission?.state === "teacher_check" ? "your teacher will check this one" : chipLabel(p)}</li>
+        ))}
       </ul>
       <a className="button primary big" href={GOBLINS_URL} target="_blank" rel="noreferrer">Keep practicing with Goblins →</a>
     </section>
