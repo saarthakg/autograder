@@ -387,7 +387,8 @@ Status values:
 
   Each run reports PASS / FAIL / INVALID per SLO.
 - **Refs:** P32
-- **Status:** Approved in principle. **Final values go to Saarthak before the first load-test run.** They must cover: the zero-lost invariant checked against the DB; submit p99; time-to-grade p95 at an expected load stated in classes and students; drain time after a spike; `needs_review` rate with a healthy provider; and whether Neon cold start is inside the measurement.
+- **Final (approved by Saarthak, 2026-11-04):** the values above, gated as listed in `loadtest/src/slo.ts`. Expected load is testing-day: 40 classes × 30 students × 10 problems, starts staggered over 15 min, peaking near 7 submits/s. Neon and Cloud Run cold starts are measured but kept out of the SLOs (a warm-up runs first). Under chaos, latency, error rate and time to grade are reported, not gated.
+- **Status:** Final. Originally approved in principle; final values went to Saarthak before the first load-test run. They must cover: the zero-lost invariant checked against the DB; submit p99; time-to-grade p95 at an expected load stated in classes and students; drain time after a spike; `needs_review` rate with a healthy provider; and whether Neon cold start is inside the measurement.
 
 ### D-23 Calibration canary runs against prod with a synthetic tenant
 - **Decision:** About 50 real-model submissions through the deployed prod path, tagged with a `run_id` and cleaned up afterwards, behind the budget guard. Projected cost $0.02–0.05. Under D-28 this is the same public service; the canary simply creates a *non-simulated* load-test assignment.
@@ -512,3 +513,11 @@ Status values:
 - **Config only:** `GRADING_FALLBACK_MODELS` and `GRADING_PROVIDER_ORDER`. The eval still measures each model alone, with no fallback and no order.
 - **Refs:** P9, P14, P17, P25; amends D-19
 - **Status:** Accepted (Saarthak, 2026-11-03)
+
+### D-31 ★ What the load test changed
+- **Transfer budget shaped the code.** Measuring Neon transfer (5 GB/month on Free, shared with prod) found that the score moment had put every submitted drawing into each student poll. The drawing is now a one-time fetch, and polls carry scores only. Each run projects its database transfer before it starts and refuses above a limit.
+- **Leases: 30 s, renewed by a 10 s heartbeat (was 60 s).** Chaos on prod: stranded jobs recovered in 38 s, down from 66 s, with 0 lost either way. Slow model calls keep their job because the heartbeat renews the lease.
+- **The crash switch exists only on a deploy made with `ENABLE_CHAOS=1`.** Otherwise it returns 404, verified on prod after the chaos runs.
+- **First bottleneck, measured:** one instance grades about 9.3/s (32 worker slots ÷ ~3.4 s per call), and Cloud Run doesn't scale on queue depth. Testing-day (6.9/s) passes; 14/s fails time-to-grade without losing work. Fixes, in order of cost, are in LOADTEST.md.
+- **Refs:** P22, P24, P28–P33; D-22, D-28
+- **Status:** Accepted
