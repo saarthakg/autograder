@@ -1,18 +1,77 @@
 # Goblins Auto-Grader
 
-A teacher creates an assignment and gets an editable AI-drafted rubric. Students show their work on a whiteboard and get scored per problem, without waiting on the grader. The teacher gets a report.
+A teacher creates an assignment and gets an editable AI-drafted rubric. Students show their work on a whiteboard and get scored per problem, without waiting on the grader. The teacher gets a live report that says what to do tomorrow.
 
 **Live:** https://autograder-768677959450.us-east4.run.app
 
-**Try it (a sample class set up for reviewers):**
+**Sample class set up for reviewers:**
 - **Teacher:** https://autograder-768677959450.us-east4.run.app/t#k=ra8F54Zo8LWoUTegBHKgqw. Opens the class report; anyone with this link sees this one class.
 - **Students:** https://autograder-768677959450.us-east4.run.app/join?code=GNKBVE (class code **GNKBVE**). Open it in a private window, so the student and teacher sessions stay separate.
 
-**Load test:** [`LOADTEST.md`](LOADTEST.md) is the statement of confidence; `bun run loadtest --scenario testing-day --target <url>` re-runs it.
+## 60-second demo
 
-> The full README (60-second demo path, headline decisions, what we left out and why, what's next) arrives in the final phase. The decision log is in [`DECISIONS.md`](DECISIONS.md); the design is in [`docs/PLAN.md`](docs/PLAN.md).
+1. **Teacher (0–15 s).** Open the live URL and click **Try a sample assignment**. You land on three Algebra 1 problems, each with a reviewed rubric of binary criteria. Edit any criterion if you like, then click **Publish and get a class code**.
+2. **Student (15–45 s).** Click **Copy student link** and open it in a private window. Type a name and click **Join**. Draw your work on problem 1 with a mouse, trackpad or stylus (`3x − 6 = 2x + 5` → `x = 11`) and click **Submit**. You see your drawing beside "Grading…", and **Next problem →** works at once. A few seconds later the score fills in, with the criteria you met.
+3. **Teacher again (45–60 s).** Back in the first window, the report has updated: the student's score, class averages, **What the class missed**, and a review queue ranked by risk. Click a score to see the transcription, each criterion's evidence and, under **Grading details**, the model that graded it. Override any verdict; the student's view follows.
+
+To try your own problems, click **Create your own**. The rubric is drafted by a model in a few seconds.
+
+## Headline decisions
+
+The full log, with every entry's final status, is in [`DECISIONS.md`](DECISIONS.md).
+
+- **Feedback off still shows what went right (D-01).** By default a student sees their score and the criteria they met, never the answer or hints. The teacher can pick score only, or add a gentle "Not yet" for unmet criteria.
+- **One attempt per problem (D-02).** This is grading, not practice, so the score can't be gamed toward the answer, and model spend is one call per student per problem.
+- **No accounts (D-04).** Teachers get a private capability link; students join with a class code and get a rejoin code for other devices. Secrets live in the URL fragment and only their hashes are stored.
+- **Binary criteria; the model judges, code adds up (D-11).** The model transcribes the work, says whether it's legible, and marks each criterion met or not with evidence. It never sees points. Code computes the score and ranks what the teacher should check.
+- **Honest when unsure (D-06).** Illegible work or a failed grade shows "Your teacher will check this one", never a made-up score.
+- **Grading is a Postgres queue (D-12).** Submit commits the work and a job in one transaction and returns at once. Workers claim jobs with `SKIP LOCKED` and leases renewed by a heartbeat, so a crashed instance loses nothing.
+- **The cheapest model that clears an agreed bar (D-19, D-30).** `openai/gpt-6-luna` costs $0.00023 per grade, a sixteenth of the reference, and matched it on the eval. A hard set caught the planned fallback crediting an unreadable scribble, so the fallback became `gpt-6.1-sol`.
+- **One public service, tested where it runs (D-28).** One Cloud Run service runs the API, web app and worker, backed by Neon Postgres. The load test runs against that same URL, with an in-process model simulator.
+- **Worker slots sized by Little's law (D-32).** Raising the slots from 32 to 128 moved the first breakpoint from ~1,600 to beyond 4,800 students.
+
+## Results
+
+**Model eval:** on 20 hand-drawn cases × 3 runs, Luna matched the strong reference with 100% criterion accuracy, no false full credit, and a 0% flip rate. [Details below.](#model-eval-which-cheap-model-can-grade)
+
+**Load test** ([`LOADTEST.md`](LOADTEST.md), the statement of confidence):
+
+| Scenario | Load | Result |
+|---|---|---|
+| Testing day | rate-equivalent to 40 classes / 1,200 students, peak 6.9 submits/s | SHIP: 0 lost, submit p99 95 ms, time to grade p95 4.9 s |
+| Breakpoint 4× | ~4,800 students, 25.8 submits/s | SHIP on one instance, time to grade p95 4.9 s; next ceiling ~37 grades/s |
+| Chaos | instance killed mid-run | SHIP: 0 lost, stranded jobs back within 30 s |
+| Canary | 50 real grades in 10 s | Real model ~20% faster than the simulator; no 429s or 5xx; $0.009 |
+
+Everything above 5 calls/s assumes OpenRouter accepts the concurrency, because the canary only proved ~5/s. Re-run with `bun run loadtest --scenario testing-day --target <url>`. It spends $0 on models and cleans up after itself.
+
+## What was left out, and why
+
+Each part had a budget of about 75 minutes, so the product flow and the evidence behind it came first (D-28).
+
+- **Problems from a photo or PDF (D-03).** That's a second model pipeline with its own eval. Typing three problems takes a minute.
+- **Re-grade after a rubric edit (D-10).** Grades keep the rubric version they used and are marked ↺, but there's no "re-grade affected" button yet.
+- **Teacher-granted retries (D-02).** The schema has the `attempt` column; the UI doesn't.
+- **A confidence cascade (D-19).** The eval found no grading errors, so we couldn't measure whether `low` confidence predicts them. Low-confidence grades are ranked for review instead.
+- **Push updates and ETags (D-24).** Students and the report poll with backoff, and polls answered in p99 73 ms under load.
+- **Cross-device draft sync.** Unsubmitted work is kept in the browser per student and problem. Switching devices mid-problem starts that problem blank; everything submitted follows the student.
+- **Production hardening (D-28).** These were cut:
+  - a separate load-test environment and deployed fake model
+  - a worker that scales on its own
+  - Secret Manager, least-privilege IAM and budget alerts
+  - a scheduled load-test workflow
+  - a fuller chaos suite
+
+## What's next
+
+1. **A worker that scales on queue depth.** Cloud Run scales on HTTP traffic and can't see the queue. This is the first move at 10k students.
+2. **A sustained real-provider test at 30+ calls/s,** with OpenRouter's limits confirmed in writing.
+3. **Grow the gold set from teacher overrides.** Every override is stored as labelled data. Then add phone photos of paper, which is where published LLM grading fails most.
+4. **Re-grade affected, teacher-granted retries, and push updates (SSE).**
 
 ## Run locally
+
+Needs Bun 1.4 and Docker.
 
 ```sh
 bun install
@@ -20,8 +79,13 @@ docker compose up -d --wait                      # Postgres 17 (dev + test DBs)
 cp .env.example .env                             # add OPENROUTER_API_KEY for real grading
 (cd apps/server && bun --env-file=../../.env src/migrate.ts)
 bun run build && bun run dev                     # http://localhost:3000
-bun run typecheck && bun run test
+bun run typecheck && bun run test                # in a second terminal
 ```
+
+Without `OPENROUTER_API_KEY`, everything runs except model calls. The sample assignment needs no model, and a submission ends up as "Your teacher will check this one".
+
+- **Layout:** `apps/server` (Effect 4 on Bun: API, worker, migrations), `apps/web` (React), `packages/domain` (shared schemas and API), `evals/`, `loadtest/`, `e2e/`, `prompts/` (versioned prompts), `ops/deploy.sh`.
+- **Deploy:** `ops/deploy.sh` builds, migrates and deploys the Cloud Run service. `--chaos` enables the crash endpoint for a chaos run; without it, the script refuses `ENABLE_CHAOS`. It also validates tuning overrides (`JOB_LEASE="30 seconds"`, `MODEL_CONCURRENCY=128`) before building.
 
 ### Browser tests (not in CI)
 
@@ -30,11 +94,12 @@ bun run typecheck && bun run test
 ./e2e/run.sh https://<deployed-url>              # against a deployment
 ```
 
-Playwright regressions for the outsider UI review's "broken" findings. They cover drafts surviving a refresh, a problem switch and a shared Chromebook; the list and report agreeing after hand-grading; and unsaved rubric edits never being dropped. They draw with real pointer input. Each run records the workspaces it creates in `e2e/.runs/<run_id>.jsonl` so they can be deleted afterwards. They need a live server, and one test grades a submission for real (about $0.0002), so CI doesn't run them.
+These are Playwright regressions for the "broken" findings from the outsider UI review:
+- drafts surviving a refresh, a problem switch and a shared Chromebook
+- the list and report agreeing after hand-grading
+- unsaved rubric edits never being dropped
 
-### Deferred
-
-- **Cross-device draft sync.** Unsubmitted work is kept in the browser, per student and problem, so a refresh or a look at another problem never loses it. A student who switches devices mid-problem starts that problem blank, while everything already submitted follows them via the rejoin code. Syncing drafts to the server would mean a write per pen stroke for a rare case.
+They draw with real pointer input. Each run records the workspaces it creates in `e2e/.runs/<run_id>.jsonl` so they can be deleted afterwards. They need a live server, and one test grades a submission for real (about $0.0002), so CI doesn't run them.
 
 ## Model eval: which cheap model can grade?
 
