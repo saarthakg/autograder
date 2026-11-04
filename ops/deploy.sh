@@ -3,21 +3,33 @@
 # Secrets come from .env and reach Cloud Run through a temp env-vars file,
 # never through command-line arguments or logs.
 #
-# Usage: ops/deploy.sh [--chaos]
-#   --chaos  enable the crash endpoint (ENABLE_CHAOS=1) for a chaos run; redeploy without it after.
+# Usage: ops/deploy.sh [--project ID] [--region REGION] [--chaos]
+#   --project  GCP project (default: $GCP_PROJECT, then the gcloud config's project)
+#   --region   Cloud Run region (default: $GCP_REGION, then the gcloud config's run/region)
+#   --chaos    enable the crash endpoint (ENABLE_CHAOS=1) for a chaos run; redeploy without it after.
 # Optional tuning overrides, read from the deploying shell and validated before anything is built:
 #   JOB_LEASE, JOB_HEARTBEAT            Effect durations, e.g. "30 seconds" (not "30s")
 #   MODEL_CONCURRENCY, MODEL_MAX_IN_FLIGHT  positive integers
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+usage="usage: ops/deploy.sh [--project ID] [--region REGION] [--chaos]"
 chaos=0
-for arg in "$@"; do
-  case "$arg" in
+PROJECT="${GCP_PROJECT:-}"
+REGION="${GCP_REGION:-}"
+while [ $# -gt 0 ]; do
+  case "$1" in
     --chaos) chaos=1 ;;
-    *) echo "unknown argument: $arg (usage: ops/deploy.sh [--chaos])" >&2; exit 2 ;;
+    --project) [ $# -ge 2 ] || { echo "$usage" >&2; exit 2; }; PROJECT="$2"; shift ;;
+    --region) [ $# -ge 2 ] || { echo "$usage" >&2; exit 2; }; REGION="$2"; shift ;;
+    *) echo "unknown argument: $1 ($usage)" >&2; exit 2 ;;
   esac
+  shift
 done
+[ -n "$PROJECT" ] || PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
+[ -n "$REGION" ] || REGION="$(gcloud config get-value run/region 2>/dev/null || true)"
+[ -n "$PROJECT" ] || { echo "no GCP project: pass --project or set GCP_PROJECT" >&2; exit 2; }
+[ -n "$REGION" ] || { echo "no region: pass --region or set GCP_REGION (production runs in us-east4)" >&2; exit 2; }
 # Chaos only by explicit flag: a stray ENABLE_CHAOS=1 in the shell must not reach prod.
 if [ -n "${ENABLE_CHAOS:-}" ] && [ "$chaos" != "1" ]; then
   echo "refusing: ENABLE_CHAOS is set in the shell; pass --chaos to deploy the crash endpoint on purpose" >&2
@@ -40,8 +52,6 @@ for key in MODEL_CONCURRENCY MODEL_MAX_IN_FLIGHT; do
   fi
 done
 
-PROJECT="${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
-REGION=us-east4
 SERVICE=autograder
 REPO=autograder
 SHA="$(git rev-parse --short HEAD)"

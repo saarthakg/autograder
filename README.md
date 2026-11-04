@@ -91,6 +91,6 @@ The other commands:
 - `bun run eval`: shows the projected cost; add `--yes` to run it.
 - `bun run loadtest --scenario testing-day --target <url>`: spends $0 on models and cleans up after itself.
 - `./e2e/run.sh [url]`: browser tests. They're not in CI, because one grades a submission for real.
-- `ops/deploy.sh [--chaos]`: deploys to Cloud Run.
+- `ops/deploy.sh [--project ID] [--region REGION] [--chaos]`: deploys to Cloud Run (project and region also read from `GCP_PROJECT` / `GCP_REGION`).
 
 Built with Claude Code; how I directed it is in [`AGENTS.md`](AGENTS.md).
