@@ -277,7 +277,7 @@ Status values:
     - flip rate 0% at k=3, 100% schema-valid, no provider errors
     - p50 3.4 s, p95 4.5 s
     - $0.00023 per grade at list price, about 1/16 of the `gpt-6.1-sol` reference ($0.00363) with the same scores
-  - **Fallback: `google/gemini-3.1-flash-lite`** through OpenRouter's `models` routing. If the primary fails, OpenRouter tries the fallback.
+  - **Fallback: `google/gemini-3.1-flash-lite`** (superseded by D-30: replaced by `gpt-6.1-sol` after the hard set) through OpenRouter's `models` routing. If the primary fails, OpenRouter tries the fallback.
     - It's config only (`GRADING_FALLBACK_MODELS`), with no extra code path to test.
     - It also cleared every gate, and its p95 is 2.3 s. It costs about 4× more ($0.00092), which is acceptable for an occasional fallback.
     - Each grade records the model that actually answered.
@@ -484,3 +484,23 @@ Status values:
 - **Raw `results.json` stays local** (gitignored). The summary and the compact `calibration.json` (per-call latency and tokens, for the Phase 4 simulator) are committed.
 - **Refs:** P17, P29, W2
 - **Status:** Accepted
+
+### D-30 ★ The hard set caught the fallback inventing work, so it was replaced
+- **What happened:** the hard set (`evals/results/2026-11-04T02-59-09-733Z/`) has 3 cases at k=3: right answer with wrong work, sloppy but correct work, and a truly unreadable drawing.
+  - `gpt-6-luna` and `gpt-6.1-sol` got all 9 samples right and abstained on the unreadable drawing every time.
+  - **`gemini-3.1-flash-lite` "read" `3x - 6 11` from the scribble on all 3 runs and awarded 3/4.** It cleared every gate on the 20-case set, so only the hard set exposed this.
+  - Confident partial credit for work nobody can read is the worst error this product can make: the teacher never sees it, and the student gets an unearned score.
+- **Decision:**
+  1. **Fallback model: `openai/gpt-6.1-sol`.** It cleared every gate on both sets and never graded unreadable work.
+  2. **Provider order before model fallback:** `GRADING_PROVIDER_ORDER=openai,azure` is sent as OpenRouter's `provider.order`. OpenRouter serves Luna from OpenAI, Azure and Amazon Bedrock (checked on 2026-11-03), so an OpenAI outage moves to Azure, then the other Luna providers, before the request leaves Luna. In order: Luna on OpenAI → Luna on Azure → Luna on others → sol.
+     - A base slug never matches a service-tier endpoint, so `openai/flex` (cheaper, but about 73% uptime over the last day) stays out.
+     - A live call confirmed that OpenRouter honours the order and reports the serving provider.
+  3. **Every grade records model and provider** (migration 0005). The teacher's review drawer shows "graded by `<model>` via `<provider>`".
+- **Rejected: send every fallback grade to the review queue.** The fallback runs when Luna's provider is failing, which is most likely on a busy testing day. Queueing every fallback grade would bury the teacher in reviews exactly when the product matters most.
+- **Blended cost** at list price from measured tokens: Luna $0.00023/grade, sol $0.00363/grade.
+  - **Normal operation, about 2% fallback:** 0.98 × $0.00023 + 0.02 × $0.00363 = **$0.00030/grade**, compared with $0.00024 with Gemini as fallback. That is $0.00005 more per grade, or about half a cent per 100 grades.
+  - **Full Luna outage, one class** (30 students × 3 problems = 90 grades): 90 × $0.00363 = **$0.33 per class** on sol, compared with $0.02 on Luna.
+  - **Exposure:** about 135 classes in a full outage would drain the $50 key down to the budget guard's $5 floor (D-07). At that point grading stops and work queues for the teacher rather than overspending. The guard bounds the risk; it does not remove it. For a real deployment, alert on the share of grades from the fallback.
+- **Config only:** `GRADING_FALLBACK_MODELS` and `GRADING_PROVIDER_ORDER`. The eval still measures each model alone, with no fallback and no order.
+- **Refs:** P9, P14, P17, P25; amends D-19
+- **Status:** Accepted (Saarthak, 2026-11-03)

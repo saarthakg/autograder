@@ -40,13 +40,13 @@ bun run typecheck && bun run test
 | Model | Exact total | Criterion accuracy | Flip rate (k=3) | Schema-valid | p95 latency | Cost / grade | Gates |
 |---|---|---|---|---|---|---|---|
 | **openai/gpt-6-luna** (chosen) | 100% [84–100] | 100% [83–100] | 0% | 100% | 4.5 s | $0.00023 | 7/7 |
-| google/gemini-3.1-flash-lite (fallback) | 100% [84–100] | 100% [83–100] | 0% | 100% | 2.3 s | $0.00092 | 7/7 |
+| google/gemini-3.1-flash-lite (removed as fallback, see below) | 100% [84–100] | 100% [83–100] | 0% | 100% | 2.3 s | $0.00092 | 7/7 |
 | deepseek/deepseek-v4.1-flash | 100% [84–100] | 100% [83–100] | 0% | 100% | 4.8 s | $0.00022 | 7/7 |
 | qwen/qwen3-vl-30b-a3b-instruct | 83% [62–94] | 88% [67–97] | 25% | 92% | 9.9 s | $0.00036 | 3/7 |
 | openai/gpt-6.1-sol (reference) | 100% [84–100] | 100% [83–100] | 0% | 100% | 3.9 s | $0.00363 | 7/7 |
 
 - No model gave false full credit, and only Qwen gave a false zero (2%).
-- Luna was picked over DeepSeek because DeepSeek returned empty responses on 3% of calls. Gemini is the configured fallback, through OpenRouter's model routing.
+- Luna was picked over DeepSeek because DeepSeek returned empty responses on 3% of calls.
 - Full results, with every wrong case and the model's transcription: [`evals/results/2026-11-03T05-10-14-515Z/summary.md`](evals/results/2026-11-03T05-10-14-515Z/summary.md).
 
 ### The eval discriminates
@@ -66,6 +66,22 @@ Twenty cases is small. With every top model at 100%, the lower bounds of the int
 
 The input is also easier than phone photos of paper: clean black ink on a white canvas, cropped to the strokes. Most published failures of LLM grading are reading errors on noisy images (Levine et al., UIUC 2026; FERMAT, ACL 2025).
 
-A small **hard set** was added to probe harder cases: right answer with wrong work, sloppy handwriting, and truly unreadable work. Every teacher override in the product is stored as labelled data, so the gold set can keep growing from real use.
+Every teacher override in the product is stored as labelled data, so the gold set can keep growing from real use.
+
+### The hard set caught the fallback inventing work (D-30)
+
+Three harder cases at k=3: right answer with wrong work, sloppy but correct work, and a truly unreadable scribble.
+
+| Model | Exact total | Abstains on unreadable | Cost / grade |
+|---|---|---|---|
+| **openai/gpt-6-luna** (chosen) | 9/9 | 3/3 | $0.00022 |
+| google/gemini-3.1-flash-lite | 6/9 | **0/3** | $0.00094 |
+| openai/gpt-6.1-sol (now the fallback) | 9/9 | 3/3 | $0.00323 |
+
+Gemini cleared every gate on the 20-case set. On the scribble, it "read" `3x - 6 11` all three times and awarded 3 of 4 points. Confident credit for unreadable work is the worst error this product can make, because the teacher never sees it. So Gemini was removed as fallback.
+
+Grading now goes: Luna on OpenAI → Luna on Azure (then Luna's other providers) → `gpt-6.1-sol`. All of it is OpenRouter config (`GRADING_PROVIDER_ORDER`, `GRADING_FALLBACK_MODELS`). At an assumed 2% fallback rate the blended cost is $0.00030/grade. Every grade records which model and provider served it, and the teacher's review drawer shows them.
+
+Three cases is a smoke test for failure modes, not an accuracy measure: [`summary.md`](evals/results/2026-11-04T02-59-09-733Z/summary.md).
 
 Re-run it with `bun run eval`. That prints a projected cost and spends nothing; add `--yes` to run it.
