@@ -44,9 +44,9 @@ export const makeGradeHandler = Effect.gen(function*() {
     sql.withTransaction(Effect.gen(function*() {
       const verdicts = result.output.criteria.map((c) => ({ id: c.id, met: c.verdict === "met", evidence: c.evidence }))
       yield* sql`
-        INSERT INTO grade (submission_id, rubric_version, model, prompt_version, transcription, legible, confidence,
+        INSERT INTO grade (submission_id, rubric_version, model, provider, prompt_version, transcription, legible, confidence,
                            verdicts, total_points, max_points, model_started_at, model_finished_at)
-        VALUES (${submissionId}, ${rubricVersion}, ${result.model}, ${result.promptVersion}, ${result.output.transcription},
+        VALUES (${submissionId}, ${rubricVersion}, ${result.model}, ${result.provider}, ${result.promptVersion}, ${result.output.transcription},
                 ${result.output.legible}, ${result.output.confidence}, ${JSON.stringify(verdicts)}::jsonb,
                 ${result.totalPoints}, ${result.maxPoints}, ${result.startedAt}, ${result.finishedAt})
         ON CONFLICT (submission_id, rubric_version) DO NOTHING`

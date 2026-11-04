@@ -117,7 +117,7 @@ describe("fallback routing (D-19, D-30)", () => {
           ] }))
         }
         seen.push(JSON.parse(new TextDecoder().decode((req.body as any).body)))
-        return HttpClientResponse.fromWeb(req, Response.json({ model: "test/fallback", choices: [{ message: { content: "{}" } }] }))
+        return HttpClientResponse.fromWeb(req, Response.json({ model: "test/fallback", provider: "Azure", choices: [{ message: { content: "{}" } }] }))
       })))
       const res = yield* Effect.gen(function*() {
         return yield* (yield* ModelClient).complete({ ...request, fallbackModels: ["test/fallback"], providerOrder: ["openai", "azure"] })
@@ -127,6 +127,7 @@ describe("fallback routing (D-19, D-30)", () => {
       expect(seen[0].temperature).toBeUndefined() // only the fallback supports it
       expect(seen[0].reasoning).toEqual({ effort: "low" })
       expect(res.model).toBe("test/fallback")
+      expect(res.provider).toBe("Azure")
     }))
 })
 

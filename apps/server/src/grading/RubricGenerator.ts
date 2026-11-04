@@ -52,7 +52,7 @@ export class RubricGenerator extends Context.Service<RubricGenerator, {
             const res = yield* client.complete({ model, system, text, schemaName: "rubric", jsonSchema: structured.jsonSchema, maxTokens: 1500, correction }).pipe(
               Effect.tapError((e) => ledger.record({ purpose: "rubric", model, simulated: false, outcome: e.kind, latencyMs: e.latencyMs ?? 0, error: e.message }))
             )
-            const usage = { purpose: "rubric" as const, model, simulated: false, latencyMs: res.latencyMs, inputTokens: res.inputTokens, outputTokens: res.outputTokens, costUsd: res.costUsd }
+            const usage = { purpose: "rubric" as const, model: res.model, provider: res.provider, simulated: false, latencyMs: res.latencyMs, inputTokens: res.inputTokens, outputTokens: res.outputTokens, costUsd: res.costUsd }
             return yield* Effect.try({ try: () => JSON.parse(res.content) as unknown, catch: () => "response is not JSON" }).pipe(
               Effect.flatMap((json) => decodeRubric(json).pipe(Effect.mapError((e) => `response does not match the schema: ${e.message}`))),
               Effect.flatMap((rubric) => {

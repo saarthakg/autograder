@@ -30,6 +30,7 @@ export interface GradeResult {
   readonly totalPoints: number
   readonly maxPoints: number
   readonly model: string
+  readonly provider: string | null
   readonly promptVersion: string
   readonly startedAt: Date
   readonly finishedAt: Date
@@ -105,12 +106,12 @@ export class Grader extends Context.Service<Grader, {
               Effect.tapError((reason) => ledger.record({ ...base, ...usage, outcome: "invalid_output", error: reason })),
               Effect.mapError((reason) => new InvalidModelOutput({ message: reason }))
             )
-            yield* ledger.record({ ...base, ...usage, model: response.model, outcome: "ok" })
-            return { ...parsed, answeredBy: response.model }
+            yield* ledger.record({ ...base, ...usage, model: response.model, provider: response.provider, outcome: "ok" })
+            return { ...parsed, answeredBy: response.model, servedBy: response.provider }
           })
 
         // P14: one retry with the validation error fed back, then give up honestly.
-        const { output, met, answeredBy } = yield* attempt(undefined).pipe(
+        const { output, met, answeredBy, servedBy } = yield* attempt(undefined).pipe(
           Effect.catchTag("InvalidModelOutput", (e) =>
             attempt(
               `Your previous answer was rejected: ${e.message}. Return JSON matching the schema, ` +
@@ -123,6 +124,7 @@ export class Grader extends Context.Service<Grader, {
           totalPoints: totalPoints(input.rubric, met),
           maxPoints: maxPoints(input.rubric),
           model: answeredBy,
+          provider: servedBy,
           promptVersion: GRADE_PROMPT,
           startedAt,
           finishedAt: new Date(),

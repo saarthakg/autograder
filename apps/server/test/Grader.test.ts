@@ -32,7 +32,7 @@ const scripted = (answers: Array<string>) => {
     complete: (req) =>
       Effect.sync(() => {
         requests.push(req)
-        return { model: req.model, content: answers[requests.length - 1] ?? "{}", inputTokens: 1500, outputTokens: 200, costUsd: 0.0004, latencyMs: 900, httpStatus: 200 }
+        return { model: req.model, provider: "TestCo", content: answers[requests.length - 1] ?? "{}", inputTokens: 1500, outputTokens: 200, costUsd: 0.0004, latencyMs: 900, httpStatus: 200 }
       })
   }))
   return { layer, requests }

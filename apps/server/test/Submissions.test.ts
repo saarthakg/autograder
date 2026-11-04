@@ -30,6 +30,7 @@ const result = (verdicts: Array<"met" | "not_met">, legible = true): GradeResult
     totalPoints: verdicts.reduce((s, v, i) => s + (legible && v === "met" ? weights[i]! : 0), 0),
     maxPoints: 4,
     model: "test/grader",
+    provider: "TestCo",
     promptVersion: "grade.v1",
     startedAt: new Date(),
     finishedAt: new Date(),

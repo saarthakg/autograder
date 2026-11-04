@@ -27,6 +27,8 @@ export interface ModelRequest {
 export interface ModelResponse {
   /** The model that actually answered: the primary, or a fallback. */
   readonly model: string
+  /** The OpenRouter provider that served it (e.g. "OpenAI", "Azure"), when reported. */
+  readonly provider: string | null
   readonly content: string
   readonly inputTokens: number | null
   readonly outputTokens: number | null
@@ -106,6 +108,7 @@ export const fetchCatalog = (http: HttpClient.HttpClient, baseUrl: string) =>
 
 const ChatResponse = Schema.Struct({
   model: Schema.optional(Schema.String),
+  provider: Schema.optional(Schema.String),
   choices: Schema.optional(Schema.Array(Schema.Struct({
     message: Schema.Struct({ content: Schema.NullOr(Schema.String) })
   }))),
@@ -245,6 +248,7 @@ export const OpenRouterModelLive = Layer.effect(
       }
       return {
         model: body.model ?? request.model,
+        provider: body.provider ?? null,
         content,
         inputTokens: body.usage?.prompt_tokens ?? null,
         outputTokens: body.usage?.completion_tokens ?? null,

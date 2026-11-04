@@ -4,6 +4,7 @@ import { SqlClient } from "effect/sql"
 export interface ModelCallRecord {
   readonly purpose: "grade" | "rubric" | "eval" | "canary"
   readonly model: string
+  readonly provider?: string | null | undefined
   readonly simulated: boolean
   /** "ok", "invalid_output", or a ModelErrorKind. */
   readonly outcome: string
@@ -32,9 +33,9 @@ export class ModelCallLedger extends Context.Service<ModelCallLedger, {
       return ModelCallLedger.of({
         record: (c) =>
           sql`INSERT INTO model_call
-                (purpose, submission_id, model, simulated, outcome, http_status, input_tokens, output_tokens,
+                (purpose, submission_id, model, provider, simulated, outcome, http_status, input_tokens, output_tokens,
                  cost_usd, latency_ms, error, run_id)
-              VALUES (${c.purpose}, ${c.submissionId ?? null}, ${c.model}, ${c.simulated}, ${c.outcome},
+              VALUES (${c.purpose}, ${c.submissionId ?? null}, ${c.model}, ${c.provider ?? null}, ${c.simulated}, ${c.outcome},
                  ${c.httpStatus ?? null}, ${c.inputTokens ?? null}, ${c.outputTokens ?? null}, ${c.costUsd ?? null},
                  ${Math.round(c.latencyMs)}, ${c.error?.slice(0, 1000) ?? null}, ${c.runId ?? null})`.pipe(
             Effect.asVoid,

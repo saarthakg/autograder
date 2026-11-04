@@ -196,7 +196,10 @@ export class SubmissionDetail extends Schema.Class<SubmissionDetail>("Submission
   reviewReason: Schema.NullOr(Schema.String),
   transcription: Schema.NullOr(Schema.String),
   confidence: Schema.NullOr(Confidence),
+  /** The model that actually graded it: the primary or a fallback (D-30). */
   model: Schema.NullOr(Schema.String),
+  /** The OpenRouter provider that served that model, when reported. */
+  provider: Schema.NullOr(Schema.String),
   criteria: Schema.Array(CriterionDetail),
   /** Null until every criterion has a verdict (model or teacher). */
   score: Schema.NullOr(Schema.Int),

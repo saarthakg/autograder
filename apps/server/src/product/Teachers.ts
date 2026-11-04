@@ -337,11 +337,11 @@ const make = Effect.gen(function*() {
   const submissionDetail = Effect.fn("Teachers.submissionDetail")(function*(teacherId: string, submissionId: string) {
     const rows = yield* sql<{
       id: string; assignmentId: string; problemId: string; studentName: string; strokes: unknown; status: SubmissionStatus; reviewReason: string | null
-      transcription: string | null; confidence: "high" | "medium" | "low" | null; model: string | null; verdicts: ReadonlyArray<StoredVerdict> | null
+      transcription: string | null; confidence: "high" | "medium" | "low" | null; model: string | null; provider: string | null; verdicts: ReadonlyArray<StoredVerdict> | null
       gradedVersion: number | null; gradedItems: unknown; gradedRef: string | null; overrides: Record<string, boolean> | null
     }>`
       SELECT s.id, p.assignment_id AS "assignmentId", s.problem_id AS "problemId", st.display_name AS "studentName", s.strokes,
-             s.status, s.review_reason AS "reviewReason", g.transcription, g.confidence, g.model, g.verdicts,
+             s.status, s.review_reason AS "reviewReason", g.transcription, g.confidence, g.model, g.provider, g.verdicts,
              g.rubric_version AS "gradedVersion", gr.items AS "gradedItems", gr.reference_solution AS "gradedRef",
              (SELECT jsonb_object_agg(o.criterion_id, o.met) FROM override o WHERE o.submission_id = s.id) AS overrides
       FROM submission s
@@ -367,6 +367,7 @@ const make = Effect.gen(function*() {
       transcription: s.transcription,
       confidence: s.confidence,
       model: s.model,
+      provider: s.provider,
       criteria: rubric.items.map((i) => new CriterionDetail({
         id: i.id,
         label: i.label,
