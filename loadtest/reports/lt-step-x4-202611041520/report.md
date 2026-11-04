@@ -5,7 +5,7 @@
 - **Scenario:** `step`. Breakpoint step: testing-day's peak rate held for about 3.5 minutes (no stagger, 10× speed). Use --scale K for K× the load.
 - **Target:** https://autograder-768677959450.us-east4.run.app · started 2026-11-04T15:20:31.655Z
 - **Ran:** 16 classes × 30 students × 10 problems = 480 students, 4800 submits, at 10× speed. Peak arrival **25.8 submits/s** (60 s window): the rate of 160 real classes (4,800 students) working in real time.
-- **Grading:** in-process simulator (D-28): calibrated latency, injected 429/5xx/invalid output.
+- **Grading:** in-process simulator: calibrated latency, injected 429/5xx/invalid output.
 - **Cold start (excluded from SLOs):** first request 154 ms; database ready after 48 ms.
 - **Instances seen:** 1 (autograder-00011-4lm-379b5ea7).
 
@@ -68,4 +68,4 @@ Submit latency is also scored from each submit's scheduled send time (the SLO ab
 - Estimated database transfer: **167.1 MB**, 34.8 KB per submission (response bodies read from Postgres, plus each grade job reading its image back).
 - Acknowledged submits checked against the database: 4800; missing 0; not terminal after drain 0.
 - Join failures: 0. Drain wait: 6 s.
-- Projected real-model cost of this load: 4800 grades × $0.0003 ≈ **$1.44** (blended Luna + 2% sol fallback, D-30); this run spent $0 on models.
+- Projected real-model cost of this load: 4800 grades × $0.0003 ≈ **$1.44** (blended Luna + 2% sol fallback); this run spent $0 on models.

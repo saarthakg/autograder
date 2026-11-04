@@ -2,7 +2,7 @@
 
 **SHIP**: every gated SLO passed.
 
-- **Scenario:** `canary`. Calibration (D-23): 50 REAL model calls through the deployed path as a burst at testing-day peak (about 5 submits/s for 10 s), behind the budget guard.
+- **Scenario:** `canary`. Calibration: 50 REAL model calls through the deployed path as a burst at testing-day peak (about 5 submits/s for 10 s), behind the budget guard.
 - **Target:** https://autograder-768677959450.us-east4.run.app · started 2026-11-04T05:45:20.168Z
 - **Ran:** 1 class × 50 students × 1 problems = 50 students, 50 submits, at 1× speed. Peak arrival **0.8 submits/s** (60 s window): the rate of 1 real class (50 students) working in real time.
 - **Grading:** REAL model calls (canary).
@@ -56,4 +56,4 @@ Submit latency is also scored from each submit's scheduled send time (the SLO ab
 - Estimated database transfer: **0.4 MB**, 7.5 KB per submission (response bodies read from Postgres, plus each grade job reading its image back).
 - Acknowledged submits checked against the database: 50; missing 0; not terminal after drain 0.
 - Join failures: 0. Drain wait: 6 s.
-- Projected real-model cost of this load: 50 grades × $0.0003 ≈ **$0.01** (blended Luna + 2% sol fallback, D-30); this run spent real money (canary).
+- Projected real-model cost of this load: 50 grades × $0.0003 ≈ **$0.01** (blended Luna + 2% sol fallback); this run spent real money (canary).
