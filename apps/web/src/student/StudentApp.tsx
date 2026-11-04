@@ -109,6 +109,18 @@ const chipLabel = (p: StudentProblem) =>
   p.submission.state === "teacher_check" ? "teacher will check" :
   `${p.submission.score}/${p.maxPoints}`
 
+/** About 60% of the window, never below 360 px: room for multi-line algebra on a tablet. */
+const boardHeight = () => Math.min(900, Math.max(360, Math.round(window.innerHeight * 0.6)))
+const useBoardHeight = () => {
+  const [h, setH] = useState(boardHeight)
+  useEffect(() => {
+    const onResize = () => setH(boardHeight())
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
+  return h
+}
+
 const decodeDraft = (raw: unknown) => {
   const r = Schema.decodeUnknownOption(Schema.Array(Stroke))(raw)
   return r._tag === "Some" ? r.value : null
@@ -129,6 +141,7 @@ function ProblemScreen(props: {
   const [strokes, setStrokes] = useState<ReadonlyArray<Stroke>>(initial)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const height = useBoardHeight()
   const onChange = useCallback((s: ReadonlyArray<Stroke>) => {
     setStrokes(s)
     s.length === 0 ? drafts.clear(props.studentId, p.id) : drafts.save(props.studentId, p.id, s)
@@ -153,7 +166,7 @@ function ProblemScreen(props: {
         <Submitted problem={p} onNext={props.onNext} hasNext={props.hasNext} />
       ) : (
         <>
-          <Whiteboard height={360} initial={initial} onChange={onChange} />
+          <Whiteboard height={height} initial={initial} onChange={onChange} />
           <div className="actions">
             <button className="primary big" disabled={strokes.length === 0 || busy || props.closed} onClick={submit}>
               {busy ? "Sending…" : "Submit"}
