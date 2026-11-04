@@ -9,6 +9,14 @@ import { CopyButton } from "./CopyButton.tsx"
 export function TeacherHome(props: { readonly secret: string }) {
   const [items, setItems] = useState<ReadonlyArray<AssignmentSummary> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const trySample = async () => {
+    setBusy(true)
+    const r = await call({ teacher: props.secret }, (c) => c.teacher.createSample())
+    setBusy(false)
+    r.ok ? navigate(`/t/a/${r.value.id}`) : setError(friendly(r))
+  }
 
   useEffect(() => {
     call({ teacher: props.secret }, (c) => c.teacher.listAssignments()).then((r) =>
@@ -24,7 +32,15 @@ export function TeacherHome(props: { readonly secret: string }) {
       <WorkspaceLink secret={props.secret} />
       {error && <p className="error" role="alert">{error}</p>}
       {items === null && !error && <p className="muted">Loading…</p>}
-      {items?.length === 0 && <p className="muted">No assignments yet. Create one, or start from the sample on the home page.</p>}
+      {items?.length === 0 && (
+        <section className="empty-state">
+          <p>No assignments yet. Start from a ready-made sample, or type your own problems.</p>
+          <div className="row">
+            <button className="primary big" onClick={trySample} disabled={busy}>{busy ? "Setting up…" : "Try the sample assignment"}</button>
+            <button className="big" onClick={() => navigate("/t/new")}>New assignment</button>
+          </div>
+        </section>
+      )}
       <ul className="card-list">
         {items?.map((a) => (
           <li key={a.id}>
