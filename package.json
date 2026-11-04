@@ -5,16 +5,19 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "evals"
+    "evals",
+    "loadtest"
   ],
   "scripts": {
     "prepare": "effect-tsgo patch --typescript --no-oxlint",
     "typecheck": "bun run --filter '@autograder/*' typecheck",
-    "test": "bun run --filter @autograder/server --filter @autograder/evals test",
+    "test": "bun run --filter @autograder/server --filter @autograder/evals --filter @autograder/loadtest test",
     "build": "bun run --filter @autograder/web build",
     "migrate": "bun run --filter @autograder/server migrate",
     "dev": "bun run --filter @autograder/server dev",
-    "eval": "bun --env-file=.env evals/src/run.ts"
+    "eval": "bun --env-file=.env evals/src/run.ts",
+    "loadtest": "bun --env-file=.env loadtest/src/cli.ts",
+    "loadtest:cleanup": "bun --env-file=.env loadtest/src/cli.ts --cleanup"
   },
   "devDependencies": {
     "@effect/tsgo": "0.64.1",
