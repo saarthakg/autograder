@@ -17,6 +17,19 @@ bun run build && bun run dev                     # http://localhost:3000
 bun run typecheck && bun run test
 ```
 
+### Browser tests (not in CI)
+
+```sh
+./e2e/run.sh                                     # against http://localhost:3000
+./e2e/run.sh https://<deployed-url>              # against a deployment
+```
+
+Playwright regressions for the outsider UI review's "broken" findings. They cover drafts surviving a refresh, a problem switch and a shared Chromebook; the list and report agreeing after hand-grading; and unsaved rubric edits never being dropped. They draw with real pointer input. Each run records the workspaces it creates in `e2e/.runs/<run_id>.jsonl` so they can be deleted afterwards. They need a live server, and one test grades a submission for real (about $0.0002), so CI doesn't run them.
+
+### Deferred
+
+- **Cross-device draft sync.** Unsubmitted work is kept in the browser, per student and problem, so a refresh or a look at another problem never loses it. A student who switches devices mid-problem starts that problem blank, while everything already submitted follows them via the rejoin code. Syncing drafts to the server would mean a write per pen stroke for a rare case.
+
 ## Model eval: which cheap model can grade?
 
 **The cheap tier matches the reference on clean digital ink at a sixteenth of the cost.** `openai/gpt-6-luna` grades at **$0.00023** per submission. The strong reference, `openai/gpt-6.1-sol`, costs **$0.00363**. On our gold set they scored the same.
