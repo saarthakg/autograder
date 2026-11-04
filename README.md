@@ -16,31 +16,31 @@ A teacher types a few math problems and gets an editable, AI-drafted rubric. Stu
 
 ## The core slice
 
-Each step, and the product decision behind it (details in [`DECISIONS.md`](DECISIONS.md)):
+Each step, and the product decision behind it. The reasoning and trade-offs for each are in [`DECISIONS.md`](DECISIONS.md).
 
-1. **Create:** problems as text with `$…$` math, or a one-click sample that makes no model call (D-03, D-09).
-2. **Rubric:** a stronger model drafts yes-or-no criteria. The model judges each criterion; code adds up the points, so the model never sees them (D-08, D-11).
-3. **Publish:** a class code, and no accounts. Teachers keep a private link, and students get a rejoin code for other devices (D-04).
-4. **Work:** a whiteboard, and one attempt per problem, because this is grading, not practice (D-02).
-5. **Score:** submit returns at once and grading runs on a queue. Students see their score and what they got right, never hints (D-01, D-12).
-6. **Report:** a live grid, the class's most-missed criteria, and a review queue ranked by risk. Unreadable work says "Your teacher will check this one" instead of guessing (D-05, D-06).
+1. **Create:** problems as text with `$…$` math, or a one-click sample that makes no model call.
+2. **Rubric:** a stronger model drafts yes-or-no criteria. The model judges each criterion; code adds up the points, so the model never sees them.
+3. **Publish:** a class code, and no accounts. Teachers keep a private link, and students get a rejoin code for other devices.
+4. **Work:** a whiteboard, and one attempt per problem, because this is grading, not practice.
+5. **Score:** submit returns at once and grading runs on a queue. Students see their score and what they got right, never hints.
+6. **Report:** a live grid, the class's most-missed criteria, and a review queue ranked by risk. Unreadable work says "Your teacher will check this one" instead of guessing.
 
 ## Where the extra depth went, and why
 
-The brief asked two open questions, and they decide whether a teacher can rely on this.
+Two questions decide whether a teacher can rely on this: is a cheap model accurate enough, and does the system hold up on a busy testing day?
 
 **Accuracy on cheap models.** On 20 hand-drawn cases × 3 runs, `openai/gpt-6-luna` matched the `gpt-6.1-sol` reference at **$0.00023 per grade, about 1/16 of the cost**:
 - 100% criterion accuracy
 - no false full credit
 - 0% flip rate between runs
 
-The gates discriminate: Qwen3-VL failed four of them ([results](evals/results/2026-11-03T05-10-14-515Z/summary.md)). A 3-case hard set then caught the planned fallback, Gemini Flash Lite, "reading" an unreadable scribble and awarding 3/4 on every run. So the fallback became `gpt-6.1-sol`, and every grade records which model served it (D-19, D-30). With n = 20, the intervals' lower bounds sit near 83%.
+The gates discriminate: Qwen3-VL failed four of them ([results](evals/results/2026-11-03T05-10-14-515Z/summary.md)). A 3-case hard set then caught the first-choice fallback, Gemini Flash Lite, "reading" an unreadable scribble and awarding 3/4 on every run. So the fallback became `gpt-6.1-sol`, and every grade records which model served it. With n = 20, the intervals' lower bounds sit near 83%.
 
 **Trust under load.**
 - **SHIP at the load of 1,200 students** (peak 6.9 submits/s): 0 lost, time to grade p95 4.9 s.
 - **One setting moved the breakpoint:**
   - The first break was 9.3 grades/s, because 32 worker slots ÷ 3.4 s per call caps one instance (Little's law).
-  - At 128 slots, the load of **about 4,800 students** passes on the same single instance (D-32).
+  - At 128 slots, the load of **about 4,800 students** passes on the same single instance.
 - **Killing the instance mid-run lost nothing.**
 - **Caveat:** the simulator tests our system, not the provider. The real-model canary only proved about 5 calls/s.
 
@@ -62,15 +62,11 @@ In order of value:
 
 These are deferrals, not unknowns:
 
-- **Submit confirmation (D-02).** "You get one try per problem" sits beside the button instead.
-- **A fourth sample problem (D-09) and a 36-case gold set (D-18).** These shipped as three problems and 20 cases, plus the hard set.
-- **A confidence cascade (D-19).** The eval found no errors to calibrate against, so low-confidence grades are ranked for review instead.
-- **ETags on polls (D-24).** Polls stayed at p99 73 ms under 4× load; push updates (SSE) come next.
-- **Other product items:** problems from a photo or PDF, re-grade after a rubric edit, teacher-granted retries, cross-device draft sync.
-- **Production hardening (D-28):**
-  - a worker that scales on queue depth (the first move at 10k students)
-  - a separate load-test environment
-  - Secret Manager, IAM and budget alerts
+- **Submit confirmation.** "You get one try per problem" sits beside the button instead.
+- **Teacher-granted retries.** The schema already allows a second attempt; there's no UI for it yet.
+- **A larger gold set.** The eval uses 20 cases on 3 problems plus a 3-case hard set; more cases would tighten the intervals.
+- **ETags on polls.** Polls stayed at p99 73 ms under 4× load, so caching wasn't needed yet; push updates (SSE) come after.
+- **Production hardening:** a separate load-test environment, so runs never share prod; Secret Manager, least-privilege IAM and budget alerts.
 
 ## Run locally
 
