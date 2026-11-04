@@ -63,6 +63,7 @@ export class Grader extends Context.Service<Grader, {
         // An explicit model (the eval) is measured alone; the app path gets the configured fallbacks.
         const model = input.model ?? config.model.gradingModel
         const fallbackModels = input.model === undefined ? config.model.gradingFallbackModels : []
+        const providerOrder = input.model === undefined ? config.model.gradingProviderOrder : []
         const simulated = input.simulated === true
         const text = render(prompt.user, {
           problem: input.problem.prompt,
@@ -80,6 +81,7 @@ export class Grader extends Context.Service<Grader, {
             const response = yield* client.complete({
               model,
               fallbackModels,
+              providerOrder,
               system: prompt.system,
               text,
               imagePng: input.imagePng,

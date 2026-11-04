@@ -21,8 +21,10 @@ export class AppConfig extends Context.Service<AppConfig, {
     readonly apiKey: Option.Option<Redacted.Redacted>
     readonly baseUrl: string
     readonly gradingModel: string
-    /** Tried in order by OpenRouter if the primary fails (D-19): config only, no code path. */
+    /** Tried in order by OpenRouter if the primary fails (D-30): config only, no code path. */
     readonly gradingFallbackModels: ReadonlyArray<string>
+    /** OpenRouter `provider.order` for grading calls: the primary's providers, tried in order before a fallback model (D-30). */
+    readonly gradingProviderOrder: ReadonlyArray<string>
     readonly rubricModel: string
     readonly timeout: Duration.Duration
     /** Refuse model-spending work once key credit would fall below this (P25). */
@@ -55,7 +57,9 @@ export class AppConfig extends Context.Service<AppConfig, {
       const baseUrl = yield* Config.String("MODEL_BASE_URL").pipe(Config.withDefault("https://openrouter.ai/api/v1"))
       // Chosen by the Phase 2 eval (D-19): cheapest model clearing every gate.
       const gradingModel = yield* Config.String("GRADING_MODEL").pipe(Config.withDefault("openai/gpt-6-luna"))
-      const gradingFallbacks = yield* Config.String("GRADING_FALLBACK_MODELS").pipe(Config.withDefault("google/gemini-3.1-flash-lite"))
+      // D-30: the hard set caught gemini-3.1-flash-lite inventing work on an unreadable drawing; sol never did.
+      const gradingFallbacks = yield* Config.String("GRADING_FALLBACK_MODELS").pipe(Config.withDefault("openai/gpt-6.1-sol"))
+      const providerOrder = yield* Config.String("GRADING_PROVIDER_ORDER").pipe(Config.withDefault("openai,azure"))
       const rubricModel = yield* Config.String("RUBRIC_MODEL").pipe(Config.withDefault("openai/gpt-6.1-terra"))
       const modelTimeout = yield* Config.Duration("MODEL_TIMEOUT").pipe(Config.withDefault(Duration.seconds(60)))
       const budgetFloorUsd = yield* Config.Finite("BUDGET_FLOOR_USD").pipe(Config.withDefault(5))
@@ -80,7 +84,8 @@ export class AppConfig extends Context.Service<AppConfig, {
           apiKey: Option.filter(apiKey, (k) => Redacted.value(k) !== ""),
           baseUrl: baseUrl.replace(/\/$/, ""),
           gradingModel,
-          gradingFallbackModels: gradingFallbacks.split(",").map((m) => m.trim()).filter(Boolean),
+          gradingFallbackModels: list(gradingFallbacks),
+          gradingProviderOrder: list(providerOrder),
           rubricModel,
           timeout: modelTimeout,
           budgetFloorUsd
@@ -96,3 +101,5 @@ export class AppConfig extends Context.Service<AppConfig, {
     })
   )
 }
+
+const list = (csv: string) => csv.split(",").map((s) => s.trim()).filter(Boolean)

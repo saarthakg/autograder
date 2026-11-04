@@ -12,6 +12,8 @@ export interface ModelRequest {
   readonly model: string
   /** OpenRouter routes to these, in order, if the primary fails (its `models` fallback list). */
   readonly fallbackModels?: ReadonlyArray<string> | undefined
+  /** OpenRouter `provider.order`: providers tried first, in order, for every model in the chain. */
+  readonly providerOrder?: ReadonlyArray<string> | undefined
   readonly system: string
   readonly text: string
   readonly imagePng?: Uint8Array | undefined
@@ -163,8 +165,9 @@ export const buildBody = (request: ModelRequest, supported: ReadonlySet<string> 
       type: "json_schema",
       json_schema: { name: request.schemaName, strict: true, schema: request.jsonSchema }
     },
-    // Only route to providers that honour response_format (P14).
-    provider: { require_parameters: true },
+    // Only route to providers that honour response_format (P14). A base slug like "openai"
+    // never matches a service-tier endpoint (openai/flex), so flex's spotty uptime stays out.
+    provider: { require_parameters: true, ...(request.providerOrder?.length ? { order: request.providerOrder } : {}) },
     usage: { include: true }
   }
 }

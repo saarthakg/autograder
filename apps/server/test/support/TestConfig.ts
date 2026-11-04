@@ -22,6 +22,7 @@ export const testConfig = (
         baseUrl: "https://model.test/api/v1",
         gradingModel: "test/grader",
         gradingFallbackModels: [],
+        gradingProviderOrder: [],
         rubricModel: "test/rubric",
         timeout: Duration.seconds(5),
         budgetFloorUsd: 5,

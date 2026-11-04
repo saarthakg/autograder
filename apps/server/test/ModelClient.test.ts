@@ -105,7 +105,7 @@ describe("parseRetryAfter", () => {
   })
 })
 
-describe("fallback routing (D-19)", () => {
+describe("fallback routing (D-19, D-30)", () => {
   it.effect("sends the models chain and only parameters every model supports, and reports who answered", () =>
     Effect.gen(function*() {
       const seen: Array<any> = []
@@ -120,9 +120,10 @@ describe("fallback routing (D-19)", () => {
         return HttpClientResponse.fromWeb(req, Response.json({ model: "test/fallback", choices: [{ message: { content: "{}" } }] }))
       })))
       const res = yield* Effect.gen(function*() {
-        return yield* (yield* ModelClient).complete({ ...request, fallbackModels: ["test/fallback"] })
+        return yield* (yield* ModelClient).complete({ ...request, fallbackModels: ["test/fallback"], providerOrder: ["openai", "azure"] })
       }).pipe(Effect.provide(OpenRouterModelLive.pipe(Layer.provide([http, testConfig()]))))
       expect(seen[0].models).toEqual(["test/grader", "test/fallback"])
+      expect(seen[0].provider).toEqual({ require_parameters: true, order: ["openai", "azure"] })
       expect(seen[0].temperature).toBeUndefined() // only the fallback supports it
       expect(seen[0].reasoning).toEqual({ effort: "low" })
       expect(res.model).toBe("test/fallback")
