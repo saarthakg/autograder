@@ -77,8 +77,11 @@ export class AppConfig extends Context.Service<AppConfig, {
       const rubricModel = yield* Config.String("RUBRIC_MODEL").pipe(Config.withDefault("openai/gpt-6.1-terra"))
       const modelTimeout = yield* Config.Duration("MODEL_TIMEOUT").pipe(Config.withDefault(Duration.seconds(60)))
       const budgetFloorUsd = yield* Config.Finite("BUDGET_FLOOR_USD").pipe(Config.withDefault(5))
-      const concurrency = yield* Config.Int("MODEL_CONCURRENCY").pipe(Config.withDefault(32))
-      const maxInFlightGlobal = yield* Config.Int("MODEL_MAX_IN_FLIGHT").pipe(Config.withDefault(64))
+      // Little's law (LOADTEST.md): in flight = rate × latency. 128 covers 4× testing-day peak
+      // (28 grades/s × p95 4.5 s ≈ 126). Slots wait on the network, so they cost little CPU or memory.
+      // Assumes OpenRouter and its upstream providers accept that concurrency; the canary proved ~5/s.
+      const concurrency = yield* Config.Int("MODEL_CONCURRENCY").pipe(Config.withDefault(128))
+      const maxInFlightGlobal = yield* Config.Int("MODEL_MAX_IN_FLIGHT").pipe(Config.withDefault(128))
       // Short lease + heartbeat: a crashed instance's jobs come back in ≤ 30 s, while a slow
       // model call that's still running keeps its lease by renewing it every 10 s.
       const lease = yield* Config.Duration("JOB_LEASE").pipe(Config.withDefault(Duration.seconds(30)))
@@ -92,7 +95,7 @@ export class AppConfig extends Context.Service<AppConfig, {
         rate429: yield* Config.Finite("SIM_RATE_429").pipe(Config.withDefault(0.02)),
         rate5xx: yield* Config.Finite("SIM_RATE_5XX").pipe(Config.withDefault(0.01)),
         rateInvalid: yield* Config.Finite("SIM_RATE_INVALID").pipe(Config.withDefault(0.005)),
-        maxConcurrent: yield* Config.Int("SIM_MAX_CONCURRENT").pipe(Config.withDefault(64))
+        maxConcurrent: yield* Config.Int("SIM_MAX_CONCURRENT").pipe(Config.withDefault(256))
       }
       const shutdownGrace = yield* Config.Duration("WORKER_SHUTDOWN_GRACE").pipe(
         Config.withDefault(Duration.seconds(8))
