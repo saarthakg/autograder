@@ -517,7 +517,7 @@ Status values:
 ### D-31 ★ What the load test changed
 - **Transfer budget shaped the code.** Measuring Neon transfer (5 GB/month on Free, shared with prod) found that the score moment had put every submitted drawing into each student poll. The drawing is now a one-time fetch, and polls carry scores only. Each run projects its database transfer before it starts and refuses above a limit.
 - **Leases: 30 s, renewed by a 10 s heartbeat (was 60 s).** Chaos on prod: stranded jobs recovered in 38 s, down from 66 s, with 0 lost either way. Slow model calls keep their job because the heartbeat renews the lease.
-- **The crash switch exists only on a deploy made with `ENABLE_CHAOS=1`.** Otherwise it returns 404, verified on prod after the chaos runs.
+- **The crash switch exists only on a deploy made with `ops/deploy.sh --chaos`** (which sets `ENABLE_CHAOS=1`; the script refuses a stray `ENABLE_CHAOS` without the flag). Otherwise it returns 404, verified on prod after the chaos runs.
 - **First bottleneck, measured:** one instance grades about 9.3/s (32 worker slots ÷ ~3.4 s per call), and Cloud Run doesn't scale on queue depth. Testing-day (6.9/s) passes; 14/s fails time-to-grade without losing work. Fixes, in order of cost, are in LOADTEST.md.
 - **Refs:** P22, P24, P28–P33; D-22, D-28
 - **Status:** Accepted

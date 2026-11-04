@@ -2,8 +2,43 @@
 # Deploys the single Cloud Run service (D-28): build -> push -> migrate -> deploy.
 # Secrets come from .env and reach Cloud Run through a temp env-vars file,
 # never through command-line arguments or logs.
+#
+# Usage: ops/deploy.sh [--chaos]
+#   --chaos  enable the crash endpoint (ENABLE_CHAOS=1) for a chaos run; redeploy without it after.
+# Optional tuning overrides, read from the deploying shell and validated before anything is built:
+#   JOB_LEASE, JOB_HEARTBEAT            Effect durations, e.g. "30 seconds" (not "30s")
+#   MODEL_CONCURRENCY, MODEL_MAX_IN_FLIGHT  positive integers
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+chaos=0
+for arg in "$@"; do
+  case "$arg" in
+    --chaos) chaos=1 ;;
+    *) echo "unknown argument: $arg (usage: ops/deploy.sh [--chaos])" >&2; exit 2 ;;
+  esac
+done
+# Chaos only by explicit flag: a stray ENABLE_CHAOS=1 in the shell must not reach prod.
+if [ -n "${ENABLE_CHAOS:-}" ] && [ "$chaos" != "1" ]; then
+  echo "refusing: ENABLE_CHAOS is set in the shell; pass --chaos to deploy the crash endpoint on purpose" >&2
+  exit 2
+fi
+
+# Validate overrides before building: a bad value would otherwise surface as a revision that never starts.
+# Same grammar as Effect's Duration parser (Duration.ts DURATION_REGEXP).
+duration_re='^[0-9]+(\.[0-9]+)? (nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?)$'
+for key in JOB_LEASE JOB_HEARTBEAT; do
+  val="${!key:-}"
+  if [ -n "$val" ] && ! [[ "$val" =~ $duration_re ]]; then
+    echo "invalid $key='$val': use an Effect duration such as '30 seconds'" >&2; exit 2
+  fi
+done
+for key in MODEL_CONCURRENCY MODEL_MAX_IN_FLIGHT; do
+  val="${!key:-}"
+  if [ -n "$val" ] && ! [[ "$val" =~ ^[1-9][0-9]*$ ]]; then
+    echo "invalid $key='$val': use a positive integer" >&2; exit 2
+  fi
+done
 
 PROJECT="${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
 REGION=us-east4
@@ -43,9 +78,10 @@ yaml_quote() { printf "'%s'" "${1//\'/\'\'}"; }
   echo "ADMIN_TOKEN: $(yaml_quote "$(env_val ADMIN_TOKEN)")"
   key="$(env_val OPENROUTER_API_KEY)"; [ -n "$key" ] && echo "OPENROUTER_API_KEY: $(yaml_quote "$key")"
   echo "APP_VERSION: '$SHA'"
-  # Opt-in, from the deploying shell only: ENABLE_CHAOS=1 for the chaos run, JOB_LEASE to compare leases.
-  if [ "${ENABLE_CHAOS:-}" = "1" ]; then echo "ENABLE_CHAOS: '1'"; fi
-  if [ -n "${JOB_LEASE:-}" ]; then echo "JOB_LEASE: $(yaml_quote "$JOB_LEASE")"; fi
+  if [ "$chaos" = "1" ]; then echo "ENABLE_CHAOS: '1'"; fi
+  for key in JOB_LEASE JOB_HEARTBEAT MODEL_CONCURRENCY MODEL_MAX_IN_FLIGHT; do
+    if [ -n "${!key:-}" ]; then echo "$key: $(yaml_quote "${!key}")"; fi
+  done
 } > "$envfile"
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT" --region "$REGION" --image "$IMAGE" \
