@@ -5,7 +5,7 @@ import { navigate } from "../lib/router.ts"
 import { teacherLink } from "../lib/storage.ts"
 import { CopyButton } from "./CopyButton.tsx"
 
-/** The teacher's home: their capability link (the only way back) and their assignments (D-04). */
+/** The teacher's home: their capability link (the only way back) and their assignments. */
 export function TeacherHome(props: { readonly secret: string }) {
   const [items, setItems] = useState<ReadonlyArray<AssignmentSummary> | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +59,7 @@ export function TeacherHome(props: { readonly secret: string }) {
   )
 }
 
-/** Shown prominently: anyone with this link has access; it's also how you get back on another device (D-04). */
+/** Shown prominently: anyone with this link has access; it's also how you get back on another device. */
 export function WorkspaceLink(props: { readonly secret: string }) {
   const link = teacherLink(props.secret)
   return (

@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql"
 import { sha256 } from "../product/Codes.ts"
 import { Students } from "../product/Students.ts"
 
-/** The teacher's capability secret, sent as a bearer token, matched by hash (D-04). */
+/** The teacher's capability secret, sent as a bearer token, matched by hash. */
 export const TeacherAuthLive = Layer.effect(
   TeacherAuth,
   Effect.gen(function*() {

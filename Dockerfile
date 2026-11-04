@@ -1,4 +1,4 @@
-# One image: the API, the built web app and the grading worker run in one process (D-28).
+# One image: the API, the built web app and the grading worker run in one process.
 
 # --- build: install everything, build the web app ---
 FROM oven/bun:1.4.4-slim AS build

@@ -20,7 +20,7 @@ describe("effective verdicts", () => {
   })
 })
 
-describe("studentState (D-06: never a made-up score)", () => {
+describe("studentState (never a made-up score)", () => {
   it("shows grading, then graded; needs_review is the teacher's until fully graded by hand", () => {
     expect(studentState("queued", effective(items, null, {}))).toBe("grading")
     expect(studentState("graded", effective(items, model, {}))).toBe("graded")

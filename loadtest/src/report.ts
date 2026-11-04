@@ -2,7 +2,7 @@ import type { RunResult } from "./run.ts"
 import { evaluate, type Measured, type SloConfig } from "./slo.ts"
 import { fmt, summary } from "./stats.ts"
 
-/** Blended real-model cost per grade at a 2% fallback rate (D-30): what this load would cost for real. */
+/** Blended real-model cost per grade at a 2% fallback rate: what this load would cost for real. */
 const BLENDED_COST_PER_GRADE = 0.0003
 
 /**
@@ -90,7 +90,7 @@ ${verdictLine}
 - **Scenario:** \`${s.name}\`. ${s.description}
 - **Target:** ${r.target} · started ${r.startedAt}
 - **Ran:** ${plural(r.classesRun, "class", "classes")} × ${s.studentsPerClass} students × ${s.problems} problems = ${r.students} students, ${r.submits.length} submits, at ${s.speed}× speed. Peak arrival **${realRate.toFixed(1)} submits/s** (60 s window): the rate of ${plural(r.classesRun * s.speed, "real class", "real classes")} (${(r.classesRun * s.speed * s.studentsPerClass).toLocaleString()} students) working in real time.
-- **Grading:** ${s.realModel ? "REAL model calls (canary)" : "in-process simulator (D-28): calibrated latency, injected 429/5xx/invalid output"}.
+- **Grading:** ${s.realModel ? "REAL model calls (canary)" : "in-process simulator: calibrated latency, injected 429/5xx/invalid output"}.
 - **Cold start (excluded from SLOs):** first request ${Math.round(r.coldStartMs)} ms; database ready after ${Math.round(r.dbWakeMs)} ms.
 - **Instances seen:** ${instances.length} (${instances.join(", ") || "none"}).${r.crash ? `\n- **Chaos:** crashed instance \`${r.crash.instanceId ?? "?"}\` at ${(r.crash.atMs / 1000).toFixed(0)} s (HTTP ${r.crash.status}).` : ""}
 
@@ -130,7 +130,7 @@ Submit latency is also scored from each submit's scheduled send time (the SLO ab
 - Estimated database transfer: **${(transfer(r).totalBytes / 1e6).toFixed(1)} MB**, ${(transfer(r).perSubmitBytes / 1e3).toFixed(1)} KB per submission (response bodies read from Postgres, plus each grade job reading its image back).
 - Acknowledged submits checked against the database: ${r.submits.filter((x) => x.acceptedId).length}; missing ${a.missing.length}; not terminal after drain ${a.nonTerminal}.
 - Join failures: ${r.joinFailures}. Drain wait: ${r.drainWaitedSec.toFixed(0)} s.
-- Projected real-model cost of this load: ${a.submissions} grades × $${BLENDED_COST_PER_GRADE} ≈ **$${(a.submissions * BLENDED_COST_PER_GRADE).toFixed(2)}** (blended Luna + 2% sol fallback, D-30); this run spent ${s.realModel ? "real money (canary)" : "$0 on models"}.
+- Projected real-model cost of this load: ${a.submissions} grades × $${BLENDED_COST_PER_GRADE} ≈ **$${(a.submissions * BLENDED_COST_PER_GRADE).toFixed(2)}** (blended Luna + 2% sol fallback); this run spent ${s.realModel ? "real money (canary)" : "$0 on models"}.
 `
   }
 }

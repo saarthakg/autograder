@@ -103,7 +103,7 @@ layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (i
         assert.strictEqual(n!.n, 1)
       }))
 
-    it.effect("a second attempt at the same problem is refused (D-02)", () =>
+    it.effect("a second attempt at the same problem is refused", () =>
       Effect.gen(function*() {
         const { ids } = yield* submitOne()
         const err = yield* (yield* Submissions).submit({ studentId: ids.studentId, problemId: ids.problemId, idempotencyKey: "other", strokes: STROKES, imagePng: PNG }).pipe(Effect.flip)

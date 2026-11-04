@@ -29,7 +29,7 @@ export const splitStatements = (text: string): ReadonlyArray<string> => {
 
 /**
  * Loads `migrations/NNNN_name.sql` files into Effect's migrator, which handles
- * ordering, locking and the migrations table (D-26). Each file runs in the
+ * ordering, locking and the migrations table. Each file runs in the
  * migrator's transaction.
  */
 const sqlFileLoader = (directory: string) =>

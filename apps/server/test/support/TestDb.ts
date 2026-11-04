@@ -7,7 +7,7 @@ import { runMigrations } from "../../src/Migrations.ts"
 
 /**
  * Real Postgres for queue tests: SKIP LOCKED and lease semantics can't be
- * mocked honestly (D-25). Uses a separate database from dev data.
+ * mocked honestly. Uses a separate database from dev data.
  */
 const migrationsDir = fileURLToPath(new URL("../../migrations", import.meta.url))
 

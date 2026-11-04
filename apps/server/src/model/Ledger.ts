@@ -19,7 +19,7 @@ export interface ModelCallRecord {
 }
 
 /**
- * Every model call, success or failure (D-15): the source for cost per grade,
+ * Every model call, success or failure: the source for cost per grade,
  * error and 429 rates, and spend. Recording never fails the caller; a lost
  * ledger row is logged, not allowed to lose a grade.
  */

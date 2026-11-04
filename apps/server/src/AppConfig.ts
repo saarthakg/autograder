@@ -14,25 +14,25 @@ export class AppConfig extends Context.Service<AppConfig, {
   /** Serve the built web app from here. */
   readonly webDist: string
   readonly promptsDir: string
-  /** Dev-only fixture capture target (D-18); None disables POST /admin/fixtures. */
+  /** Dev-only fixture capture target; None disables POST /admin/fixtures. */
   readonly fixtureDir: Option.Option<string>
   /** ENABLE_CHAOS=1 turns on the load test's crash endpoint; set only for the chaos run's deploy. */
   readonly chaosEnabled: boolean
   readonly model: {
-    /** None = real grading unavailable (simulated assignments still work, D-28). */
+    /** None = real grading unavailable (simulated assignments still work). */
     readonly apiKey: Option.Option<Redacted.Redacted>
     readonly baseUrl: string
     readonly gradingModel: string
-    /** Tried in order by OpenRouter if the primary fails (D-30): config only, no code path. */
+    /** Tried in order by OpenRouter if the primary fails: config only, no code path. */
     readonly gradingFallbackModels: ReadonlyArray<string>
-    /** OpenRouter `provider.order` for grading calls: the primary's providers, tried in order before a fallback model (D-30). */
+    /** OpenRouter `provider.order` for grading calls: the primary's providers, tried in order before a fallback model. */
     readonly gradingProviderOrder: ReadonlyArray<string>
     readonly rubricModel: string
     readonly timeout: Duration.Duration
     /** Refuse model-spending work once key credit would fall below this. */
     readonly budgetFloorUsd: number
   }
-  /** In-process model simulator for load-test assignments (D-28). */
+  /** In-process model simulator for load-test assignments. */
   readonly simulation: {
     readonly latencyMedianMs: number
     readonly latencySigma: number
@@ -47,9 +47,9 @@ export class AppConfig extends Context.Service<AppConfig, {
     readonly lease: Duration.Duration
     /** How often a running job renews its lease. */
     readonly heartbeat: Duration.Duration
-    /** Longest the idle worker sleeps without a wake; long so Neon can scale to zero (D-28). */
+    /** Longest the idle worker sleeps without a wake; long so Neon can scale to zero. */
     readonly idlePoll: Duration.Duration
-    /** How long in-flight jobs get after SIGTERM before we rely on leases (Cloud Run allows ~10 s). */
+    /** How long in-flight jobs get after SIGTERM before leases take over (Cloud Run allows ~10 s). */
     readonly shutdownGrace: Duration.Duration
   }
 }>()("autograder/AppConfig") {

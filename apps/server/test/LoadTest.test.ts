@@ -8,7 +8,7 @@ import { TestApp, withTokens } from "./support/TestApp.ts"
 
 const makeClient = HttpApiTest.groups(Api, ["loadtest", "public", "student", "teacher"])
 
-layer(TestApp, { excludeTestServices: true })("load-test operator endpoints (D-28)", (it) => {
+layer(TestApp, { excludeTestServices: true })("load-test operator endpoints", (it) => {
   it.effect("a run's classes behave like real ones, analysis reads the server clock, and cleanup removes everything", () =>
     Effect.gen(function*() {
       yield* resetDb

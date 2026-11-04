@@ -3,7 +3,7 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
 import { AdminAuth } from "./Admin.ts"
 
 /**
- * Operator endpoints for the load test (D-28), behind ADMIN_TOKEN. A run
+ * Operator endpoints for the load test, behind ADMIN_TOKEN. A run
  * creates its own teacher and published classes tagged with a run_id; the
  * generator then drives them through the public student and teacher API
  * like real browsers. Analysis reads the server's own clock.
@@ -67,7 +67,7 @@ export class LoadTestApi extends HttpApiGroup.make("loadtest")
         runId: RunId,
         classes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 200 })),
         problems: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10 })),
-        /** false only for the calibration canary: real model calls, behind the budget guard (D-23). */
+        /** false only for the calibration canary: real model calls, behind the budget guard. */
         simulated: Schema.Boolean
       }),
       success: LoadTestClasses

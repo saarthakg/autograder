@@ -13,7 +13,7 @@ const set = (key: string, value: string | null) => {
 const TEACHER = "ag.teacher"
 const STUDENT = "ag.student"
 
-/** The teacher's capability secret: from the link's #k= fragment, else remembered (D-04). */
+/** The teacher's capability secret: from the link's #k= fragment, else remembered. */
 export const teacherSecret = {
   read: (): string | null => {
     const fromHash = new URLSearchParams(window.location.hash.slice(1)).get("k")

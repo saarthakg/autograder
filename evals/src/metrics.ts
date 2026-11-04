@@ -1,5 +1,5 @@
 /**
- * Eval metrics (D-19). Pure functions; the runner feeds them
+ * Eval metrics. Pure functions; the runner feeds them
  * samples, one per (model, case, run).
  */
 
@@ -58,7 +58,7 @@ const goldMax = (g: Gold) => g.weights.reduce((s, w) => s + w, 0)
 /**
  * A rate pooled over every run of the included cases. Runs of the same case
  * are correlated, so the CI uses the number of distinct cases as n. That's
- * conservative: we don't claim certainty we haven't earned.
+ * conservative: the interval never claims more certainty than the data supports.
  */
 const rate = (samples: ReadonlyArray<Sample>, include: (s: Sample) => boolean, success: (s: Sample) => boolean): Interval => {
   const pool = samples.filter(include)
@@ -99,7 +99,7 @@ export const computeMetrics = (samples: ReadonlyArray<Sample>, golds: ReadonlyAr
   const answered = (s: Sample) => s.outcome !== "error" // provider errors aren't the model's judgment
   const graded = (s: Sample) => s.outcome === "graded"
 
-  // Exact/within-one: an abstention is CORRECT on unreadable gold (D-19) and wrong on legible gold.
+  // Exact/within-one: an abstention is CORRECT on unreadable gold and wrong on legible gold.
   const exact = (s: Sample) => legible(s) ? graded(s) && s.total === goldTotal(g(s)) : s.outcome === "abstained"
   const withinOne = (s: Sample) => legible(s) ? graded(s) && Math.abs((s.total ?? -99) - goldTotal(g(s))) <= 1 : s.outcome === "abstained"
 
@@ -136,7 +136,7 @@ export const computeMetrics = (samples: ReadonlyArray<Sample>, golds: ReadonlyAr
     exactTotal: rate(samples, answered, exact),
     withinOne: rate(samples, answered, withinOne),
     mae,
-    // FFC only over gold cases that are NOT full credit (D-19); FZ only over gold cases that are not 0.
+    // FFC only over gold cases that are NOT full credit; FZ only over gold cases that are not 0.
     falseFullCredit: rate(samples, (s) => answered(s) && legible(s) && goldTotal(g(s)) < goldMax(g(s)), (s) => graded(s) && s.total === goldMax(g(s))),
     falseZero: rate(samples, (s) => answered(s) && legible(s) && goldTotal(g(s)) > 0, (s) => graded(s) && s.total === 0),
     abstentionCorrect: rate(samples, (s) => answered(s) && !legible(s), (s) => s.outcome === "abstained"),
@@ -160,7 +160,7 @@ export interface GateResult {
   readonly uncertain: boolean
 }
 
-/** The acceptance bar (D-19). */
+/** The acceptance bar. */
 export const gates = (m: Metrics): ReadonlyArray<GateResult> => {
   const atLeast = (name: string, i: Interval, t: number): GateResult =>
     ({ name, value: i.p, threshold: `≥ ${t * 100}%`, pass: i.p >= t, uncertain: i.low < t && i.high >= t })

@@ -84,7 +84,7 @@ export class ProblemView extends Schema.Class<ProblemView>("ProblemView")({
 
 export class Workspace extends Schema.Class<Workspace>("Workspace")({
   teacherId: Schema.String,
-  /** Shown once; the teacher link is /t#k=<secret>. Only its hash is stored (D-04). */
+  /** Shown once; the teacher link is /t#k=<secret>. Only its hash is stored. */
   secret: Schema.String
 }) {}
 
@@ -100,7 +100,7 @@ export class AssignmentSummary extends Schema.Class<AssignmentSummary>("Assignme
   createdAt: Schema.DateTimeUtcFromString
 }) {}
 
-/** What a student sees once a problem is graded (D-01): never red ink, never the answer. */
+/** What a student sees once a problem is graded: never red ink, never the answer. */
 export const StudentView = Schema.Literals(["score", "met", "met_not_yet"])
 export type StudentView = typeof StudentView.Type
 
@@ -112,7 +112,7 @@ export class AssignmentDetail extends Schema.Class<AssignmentDetail>("Assignment
   shareSlug: Schema.NullOr(Schema.String),
   studentView: StudentView,
   problems: Schema.Array(ProblemView),
-  /** Problems whose rubric couldn't be drafted; the teacher starts from a template (D-08). */
+  /** Problems whose rubric couldn't be drafted; the teacher starts from a template. */
   rubricFallbacks: Schema.Array(Schema.String)
 }) {}
 
@@ -124,7 +124,7 @@ export class ReportCell extends Schema.Class<ReportCell>("ReportCell")({
   status: CellStatus,
   score: Schema.NullOr(Schema.Int),
   overridden: Schema.Boolean,
-  /** Graded under an earlier rubric version than the current one (D-10). */
+  /** Graded under an earlier rubric version than the current one. */
   staleRubric: Schema.Boolean
 }) {}
 
@@ -207,11 +207,11 @@ export class SubmissionDetail extends Schema.Class<SubmissionDetail>("Submission
   reviewReason: Schema.NullOr(Schema.String),
   transcription: Schema.NullOr(Schema.String),
   confidence: Schema.NullOr(Confidence),
-  /** The model that actually graded it: the primary or a fallback (D-30). */
+  /** The model that actually graded it: the primary or a fallback. */
   model: Schema.NullOr(Schema.String),
   /** The OpenRouter provider that served that model, when reported. */
   provider: Schema.NullOr(Schema.String),
-  /** The backup model answered because the primary's providers were failing (D-30). */
+  /** The backup model answered because the primary's providers were failing. */
   usedFallback: Schema.Boolean,
   criteria: Schema.Array(CriterionDetail),
   /** Null until every criterion has a verdict (model or teacher). */
@@ -300,9 +300,9 @@ export class StudentProblem extends Schema.Class<StudentProblem>("StudentProblem
   submission: Schema.NullOr(Schema.Struct({
     state: StudentSubmissionState,
     score: Schema.NullOr(Schema.Int),
-    /** Labels of met criteria, task-framed (D-01). Empty when the teacher shows score only. */
+    /** Labels of met criteria, task-framed. Empty when the teacher shows score only. */
     metLabels: Schema.Array(Schema.String),
-    /** Labels of criteria not met yet; only when the teacher chose "met + Not yet" (D-01). */
+    /** Labels of criteria not met yet; only when the teacher chose "met + Not yet". */
     notYetLabels: Schema.Array(Schema.String)
   }))
 }) {}

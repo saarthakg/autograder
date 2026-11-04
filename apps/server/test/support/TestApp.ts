@@ -18,7 +18,7 @@ import { testConfig } from "./TestConfig.ts"
 import { SimulatedModel } from "../../src/model/SimulatedModel.ts"
 import { TestDb } from "./TestDb.ts"
 
-/** Rubric drafting always fails in tests, like a provider outage, exercising the template fallback (D-08). */
+/** Rubric drafting always fails in tests, like a provider outage, exercising the template fallback. */
 const NoRubrics = Layer.succeed(RubricGenerator, RubricGenerator.of({
   generate: () => Effect.fail(new ModelError({ kind: "provider_error", message: "no model in tests" }))
 }))

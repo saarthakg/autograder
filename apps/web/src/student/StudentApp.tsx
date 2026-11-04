@@ -43,7 +43,7 @@ export function StudentApp() {
   useEffect(() => { refresh() }, [refresh])
 
   const grading = home?.problems.some((p) => p.submission?.state === "grading") ?? false
-  usePoll(refresh, grading) // only while a score is pending (D-24)
+  usePoll(refresh, grading) // only while a score is pending
 
   if (!session) { navigate("/join"); return null }
   if (error) return <main className="page"><p className="error">{error}</p></main>
@@ -197,7 +197,7 @@ function ProblemScreen(props: {
 
 /**
  * The score moment: the student's own work beside its score. Task-framed,
- * never ego-framed (D-01, Butler): what the work did, not a rank, and "Not
+ * never ego-framed (Butler 1987): what the work did, not a rank, and "Not
  * yet" in neutral ink, never red. "Next" never waits on the grader.
  */
 function Submitted(props: {

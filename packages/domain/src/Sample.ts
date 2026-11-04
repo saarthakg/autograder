@@ -1,9 +1,9 @@
 import { Rubric, RubricItem } from "./Grading.ts"
 
 /**
- * The sample assignment (D-09) and eval problem set (D-18): three Algebra 1
+ * The sample assignment and eval problem set: three Algebra 1
  * problems with reviewed, frozen rubrics. Criteria are atomic and method-
- * agnostic, so a valid alternative method can earn them (D-11).
+ * agnostic, so a valid alternative method can earn them.
  */
 export interface SampleProblem {
   readonly key: "p1" | "p2" | "p3"
@@ -63,9 +63,9 @@ export const SAMPLE_PROBLEMS: ReadonlyArray<SampleProblem> = [
 ]
 
 /**
- * Gold cases to draw in fixture-capture mode (D-18). `expect` is the gold
+ * Gold cases to draw in fixture-capture mode. `expect` is the gold
  * per-criterion verdict (1 = met), or "abstain" when the work is unreadable,
- * where abstaining is the correct answer (D-19).
+ * where abstaining is the correct answer.
  */
 export interface EvalCase {
   readonly key: string

@@ -9,11 +9,11 @@ export const CriterionId = Schema.String.check(Schema.isPattern(/^c[1-6]$/))
 
 export class RubricItem extends Schema.Class<RubricItem>("RubricItem")({
   id: CriterionId,
-  /** Student-safe, task-framed: shown as "✓ <label>" when met (D-01). */
+  /** Student-safe, task-framed: shown as "✓ <label>" when met. */
   label: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(60)),
-  /** What earns it: one atomic, independently checkable fact (D-11 condition 1). */
+  /** What earns it: one atomic, independently checkable fact. */
   description: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(300)),
-  /** Weight applied by code, never shown to the model (D-11 condition 2). */
+  /** Weight applied by code, never shown to the model. */
   points: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10 }))
 }) {}
 

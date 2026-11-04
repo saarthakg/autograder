@@ -57,7 +57,7 @@ const toProblemView = (r: ProblemRow) =>
 
 /**
  * Everything a teacher does, always scoped to their workspace: an assignment
- * that isn't theirs is NotFound, never Forbidden, so ids can't be probed (D-04).
+ * that isn't theirs is NotFound, never Forbidden, so ids can't be probed.
  */
 export class Teachers extends Context.Service<Teachers, Effect.Success<typeof make>>()(
   "autograder/Teachers"
@@ -106,7 +106,7 @@ const make = Effect.gen(function*() {
                  VALUES (${row!.id}, 1, ${JSON.stringify(rubric.items)}::jsonb, ${rubric.referenceSolution}, ${source}, ${model}, ${promptVersion})`
     })
 
-  /** Drafts every rubric in parallel (D-08); a problem whose draft fails gets a template, never blocks the teacher. */
+  /** Drafts every rubric in parallel; a problem whose draft fails gets a template, never blocks the teacher. */
   const create = Effect.fn("Teachers.create")(function*(teacherId: string, title: string, problems: ReadonlyArray<ProblemInput>) {
     const drafts = yield* Effect.forEach(problems, (p) =>
       rubrics.generate(p).pipe(
@@ -130,7 +130,7 @@ const make = Effect.gen(function*() {
     return yield* detail(teacherId, assignmentId, fallbacks)
   })
 
-  /** One-click sample (D-09): reviewed rubrics, no model call, instant. */
+  /** One-click sample: reviewed rubrics, no model call, instant. */
   const createSample = Effect.fn("Teachers.createSample")(function*(teacherId: string) {
     const id = yield* sql.withTransaction(Effect.gen(function*() {
       const id = yield* insertAssignment(teacherId, "Algebra 1: Solving equations (sample)")
@@ -163,7 +163,7 @@ const make = Effect.gen(function*() {
       }), { concurrency: 4 })
   })
 
-  /** Every edit is a new version; grades keep the version they used (D-10). */
+  /** Every edit is a new version; grades keep the version they used. */
   const saveRubric = Effect.fn("Teachers.saveRubric")(function*(teacherId: string, problemId: string, rubric: Rubric) {
     const rows = yield* sql<{ assignmentId: string; maxPoints: number; version: number }>`
       SELECT p.assignment_id AS "assignmentId", p.max_points AS "maxPoints", p.current_rubric_version AS version

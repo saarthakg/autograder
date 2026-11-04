@@ -9,7 +9,7 @@ import { SimulatedModel } from "../model/SimulatedModel.ts"
 import { loadPrompt, type PromptTemplate, render } from "./Prompts.ts"
 
 const GRADE_PROMPT = "grade.v2"
-/** Upper bound for the budget guard; real cheap-tier grades cost ~$0.0003 (D-30). */
+/** Upper bound for the budget guard; real cheap-tier grades cost ~$0.0003. */
 const MAX_COST_PER_CALL_USD = 0.02
 
 interface GradeInput {
@@ -39,7 +39,7 @@ export interface GradeResult {
   readonly calls: ReadonlyArray<ModelResponse>
 }
 
-/** The model answered twice with output we can't use: the teacher grades it. */
+/** The model answered twice with unusable output: the teacher grades it. */
 export class InvalidModelOutput extends Schema.TaggedError<InvalidModelOutput>()("InvalidModelOutput", {
   message: Schema.String
 }) {}
@@ -68,7 +68,7 @@ export class Grader extends Context.Service<Grader, {
         const fallbackModels = input.model === undefined ? config.model.gradingFallbackModels : []
         const providerOrder = input.model === undefined ? config.model.gradingProviderOrder : []
         const simulated = input.simulated === true
-        // Load-test assignments never reach a real provider (D-28).
+        // Load-test assignments never reach a real provider.
         const client = simulated ? simulator : real
         const text = render(prompt.user, {
           problem: input.problem.prompt,

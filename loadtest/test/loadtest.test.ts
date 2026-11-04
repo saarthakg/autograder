@@ -13,7 +13,7 @@ describe("timeline", () => {
     expect(classesToRun(fast)).toBe(10)
     const realPeak = peakRate(buildTimeline(real), real.speed)
     const fastPeak = peakRate(buildTimeline(fast), fast.speed)
-    // D-22 sizing: about 7 submits/s at testing-day peak; the compressed run lands near it.
+    // Sizing: about 7 submits/s at testing-day peak; the compressed run lands near it.
     expect(realPeak).toBeGreaterThan(3)
     expect(realPeak).toBeLessThan(9)
     expect(Math.abs(fastPeak - realPeak) / realPeak).toBeLessThan(0.35)
@@ -29,7 +29,7 @@ describe("timeline", () => {
 
 const healthy: Measured = { lost: 0, neverAccepted: 0, submitP99Ms: 300, submitErrorRate: 0, ttgP95Sec: 8, ttgP99Sec: 12, drainSec: 10, needsReviewRate: 0.005, lagP99Ms: 20 }
 
-describe("SLO verdict (D-22)", () => {
+describe("SLO verdict", () => {
   it("SHIP when every gate passes; NO-SHIP on one lost submission; INVALID when the generator lags", () => {
     expect(evaluate(DEFAULT_SLO, healthy, false).verdict).toBe("SHIP")
     expect(evaluate(DEFAULT_SLO, { ...healthy, lost: 1 }, false).verdict).toBe("NO-SHIP")

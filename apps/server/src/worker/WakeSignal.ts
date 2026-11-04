@@ -1,7 +1,7 @@
 import { Context, Duration, Effect, Layer, Option, Queue } from "effect"
 
 /**
- * In-process doorbell for the worker loop (D-27). Rings coalesce: a burst of
+ * In-process doorbell for the worker loop. Rings coalesce: a burst of
  * 100 enqueues wakes the loop once, and it then drains everything due.
  */
 export class WakeSignal extends Context.Service<WakeSignal, {

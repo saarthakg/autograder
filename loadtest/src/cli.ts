@@ -88,7 +88,7 @@ const main = async () => {
 
   if (scenario.realModel) {
     const grades = classesToRun(scenario) * scenario.studentsPerClass * scenario.problems
-    // Measured blended cost (D-30) with the eval's safety margins: ×1.25 retries, ×1.5 safety.
+    // Measured blended cost with the eval's safety margins: ×1.25 retries, ×1.5 safety.
     const projected = grades * 0.0003 * 1.25 * 1.5
     log(`canary: ${grades} REAL grades, projected ≈ $${projected.toFixed(3)} (budget guard floor applies)`)
     if (!flag("yes")) { log("Projection only. Re-run with --yes to spend it."); return 0 }

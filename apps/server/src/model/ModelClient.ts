@@ -4,7 +4,7 @@ import { AppConfig } from "../AppConfig.ts"
 
 /**
  * One chat-completion call with structured output (D-14: a thin client over
- * HttpClient, so we keep OpenRouter's exact `usage.cost` and raw status codes).
+ * HttpClient, which keeps OpenRouter's exact `usage.cost` and raw status codes).
  * The response body is returned as text; the caller decodes it with Schema,
  * because "invalid output" is a grading concern with its own retry rule.
  */
@@ -183,7 +183,7 @@ export const OpenRouterModelLive = Layer.effect(
   Effect.gen(function*() {
     const config = yield* AppConfig
     const http = yield* HttpClient.HttpClient
-    // Cached for an hour; if the catalog is unreachable we send only required parameters.
+    // Cached for an hour; if the catalog is unreachable, only required parameters are sent.
     const catalog = yield* Effect.cachedWithTTL(
       fetchCatalog(http, config.model.baseUrl).pipe(
         Effect.tapError((e) => Effect.logWarning("model catalog unavailable; sending minimal parameters", e)),

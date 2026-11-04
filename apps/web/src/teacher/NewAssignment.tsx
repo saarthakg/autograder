@@ -8,7 +8,7 @@ import { navigate } from "../lib/router.ts"
 interface Draft { prompt: string; answerKey: string; maxPoints: number }
 const blank = (): Draft => ({ prompt: "", answerKey: "", maxPoints: 3 })
 
-/** Type problems (math in $...$); each gets a drafted, editable rubric (D-03, D-08). */
+/** Type problems (math in $...$); each gets a drafted, editable rubric. */
 export function NewAssignment() {
   const [title, setTitle] = useState("")
   const [problems, setProblems] = useState<Array<Draft>>([blank()])

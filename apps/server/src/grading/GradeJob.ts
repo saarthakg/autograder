@@ -26,7 +26,7 @@ interface Loaded {
 }
 
 /**
- * The "grade" job (D-12): load the submission and its current rubric, call the
+ * The "grade" job: load the submission and its current rubric, call the
  * grader, then write the grade and the submission's final status together.
  * Re-running a finished job is a no-op. Every way out ends in a terminal
  * status; nothing is left half-graded.

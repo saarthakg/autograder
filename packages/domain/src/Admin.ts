@@ -9,7 +9,7 @@ export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   { httpApiStatus: 401 }
 ) {}
 
-/** Operator bearer token (ADMIN_TOKEN): ops endpoints and, later, load-test runs (D-28). */
+/** Operator bearer token (ADMIN_TOKEN): ops and load-test endpoints. */
 export class AdminAuth extends HttpApiMiddleware.Service<AdminAuth>()("autograder/AdminAuth", {
   requiredForClient: true,
   security: { bearer: HttpApiSecurity.bearer },
@@ -47,7 +47,7 @@ export class InvalidSubmission extends Schema.TaggedError<InvalidSubmission>()(
   { httpApiStatus: 400 }
 ) {}
 
-/** One attempt per problem (D-02). */
+/** One attempt per problem. */
 export class AlreadySubmitted extends Schema.TaggedError<AlreadySubmitted>()(
   "AlreadySubmitted",
   { message: Schema.String },
@@ -157,7 +157,7 @@ export class AdminApi extends HttpApiGroup.make("admin")
       success: Rubric,
       error: RubricGenerationFailed
     }),
-    // Dev-only fixture capture (D-18): writes strokes + PNG to FIXTURE_DIR.
+    // Dev-only fixture capture: writes strokes + PNG to FIXTURE_DIR.
     HttpApiEndpoint.post("saveFixture", "/fixtures", {
       payload: Schema.Struct({
         caseKey: Schema.String,

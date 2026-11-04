@@ -75,7 +75,7 @@ describe("Grader", () => {
         expect(result.success.promptVersion).toBe("grade.v2")
       }
       expect(ledger.map((c) => c.outcome)).toEqual(["ok"])
-      // The prompt carries criteria ids and descriptions but never point values (D-11).
+      // The prompt carries criteria ids and descriptions but never point values.
       expect(model.requests[0]!.text).toContain("- c3: Answer x = 11")
       expect(model.requests[0]!.text).not.toMatch(/points?/i)
     }))

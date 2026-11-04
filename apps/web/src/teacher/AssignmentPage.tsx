@@ -252,7 +252,7 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
     if (r.ok) setReport(r.value)
   }, [props.a.id, props.secret])
   useEffect(() => { refresh() }, [refresh])
-  // The report is live while the assignment is open: 10 s, backing off to 30 s (D-24).
+  // The report is live while the assignment is open: 10 s, backing off to 30 s.
   usePoll(refresh, props.a.status === "open", 10_000, 30_000)
 
   if (report === null) return <p className="muted">Loading the class report…</p>

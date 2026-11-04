@@ -13,7 +13,7 @@ export const shortCode = (length = 6): string => {
 /** Normalises what a student typed: case, spaces and dashes ("ab3-k9x" -> "AB3K9X"). */
 export const normaliseCode = (input: string): string => input.toUpperCase().replace(/[\s-]/g, "")
 
-/** 128-bit capability secret for links and tokens (D-04). */
+/** 128-bit capability secret for links and tokens. */
 export const newSecret = (): string => randomBytes(16).toString("base64url")
 
 /** Only hashes of secrets are stored. */

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 
 /**
- * Polls while `active`, backing off from `min` to `max` ms (D-24). Stops when
+ * Polls while `active`, backing off from `min` to `max` ms. Stops when
  * the tab is hidden so idle Chromebooks don't keep the server (or Neon) awake.
  */
 export const usePoll = (tick: () => Promise<void>, active: boolean, min = 2_000, max = 8_000) => {

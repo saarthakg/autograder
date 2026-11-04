@@ -18,5 +18,5 @@ export const DbLive = Layer.unwrap(
   })
 )
 
-/** Client for migrations, which run over the *direct* URL (D-28). */
+/** Client for migrations, which run over the *direct* URL. */
 export const directDbLayer = (url: Redacted.Redacted) => PgClient.layer({ url, maxConnections: 1 })

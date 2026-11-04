@@ -44,7 +44,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.match(assignment.classCode!, /^[A-HJKMNP-Z2-9]{6}$/)
       }))
 
-    it.effect("a drafted rubric that fails falls back to an editable template, never blocking the teacher (D-08)", () =>
+    it.effect("a drafted rubric that fails falls back to an editable template, never blocking the teacher", () =>
       Effect.gen(function*() {
         const { teacher } = yield* classroom
         const created = yield* teacher.teacher.createAssignment({
@@ -68,7 +68,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.strictEqual(saved.rubricSource, "edited")
       }))
 
-    it.effect("another teacher's link sees nothing (D-04)", () =>
+    it.effect("another teacher's link sees nothing", () =>
       Effect.gen(function*() {
         const { anon, assignment } = yield* classroom
         const other = yield* anon.public.createWorkspace()
@@ -115,7 +115,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
   })
 
   describe("grading loop: submit -> score -> report -> override", () => {
-    it.effect("student sees met criteria only; teacher overrides one click; both views follow (D-01)", () =>
+    it.effect("student sees met criteria only; teacher overrides one click; both views follow", () =>
       Effect.gen(function*() {
         const { teacher, student, assignment } = yield* classroom
         const p1 = assignment.problems[0]!
@@ -141,7 +141,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.strictEqual(home.problems[0]!.submission!.score, 4)
       }))
 
-    it.effect("unreadable work goes to the review queue, shows 'teacher will check', and hand grading completes it (D-06)", () =>
+    it.effect("unreadable work goes to the review queue, shows 'teacher will check', and hand grading completes it", () =>
       Effect.gen(function*() {
         const { teacher, student, assignment } = yield* classroom
         const p1 = assignment.problems[0]!
@@ -163,7 +163,7 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.deepStrictEqual([summary!.gradedCount, summary!.reviewCount], [1, 0])
       }))
 
-    it.effect("the teacher picks what students see: score only, met (default), or met + Not yet (D-01)", () =>
+    it.effect("the teacher picks what students see: score only, met (default), or met + Not yet", () =>
       Effect.gen(function*() {
         const { teacher, student, assignment } = yield* classroom
         const p1 = assignment.problems[0]!

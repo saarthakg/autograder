@@ -14,7 +14,7 @@ const write = (k: string, v: string) => {
 }
 
 /**
- * Dev-only fixture capture (D-18): draw each gold case in the real
+ * Dev-only fixture capture: draw each gold case in the real
  * whiteboard and save its strokes + the exact PNG the grader would see to
  * evals/fixtures/ (via the local server's FIXTURE_DIR). Not in production
  * builds. Run locally, then open http://localhost:5173/dev/fixtures:

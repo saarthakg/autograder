@@ -1,6 +1,6 @@
 import { Context, Layer } from "effect"
 
-/** Identifies this process, so logs and /health reveal restarts (D-28). */
+/** Identifies this process, so logs and /health reveal restarts. */
 export class Instance extends Context.Service<Instance, {
   readonly id: string
   readonly startedAt: number

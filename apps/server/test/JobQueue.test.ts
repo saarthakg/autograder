@@ -43,7 +43,7 @@ layer(JobQueue.layer.pipe(Layer.provideMerge(TestDb)), { excludeTestServices: tr
         assert.strictEqual(new Set(all).size, 40)
       }))
 
-    it.effect("respects the global in-flight cap across workers (D-12)", () =>
+    it.effect("respects the global in-flight cap across workers", () =>
       Effect.gen(function*() {
         yield* truncateJobs
         const q = yield* JobQueue

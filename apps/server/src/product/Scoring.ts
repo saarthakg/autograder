@@ -38,7 +38,7 @@ export const effective = (
 export type SubmissionStatus = "queued" | "grading" | "graded" | "needs_review"
 
 /**
- * What a student sees for one submitted problem (D-01, D-06): a score only when
+ * What a student sees for one submitted problem: a score only when
  * one exists (model-graded, or fully teacher-graded); never a made-up number.
  */
 export const studentState = (
@@ -78,7 +78,7 @@ export const reviewRisk = (c: ReviewCandidate): { reason: ReviewQueueReason; ris
   return null
 }
 
-/** Starter rubric when drafting fails (D-08): one criterion for the answer; the teacher refines it. */
+/** Starter rubric when drafting fails: one criterion for the answer; the teacher refines it. */
 export const templateRubric = (answerKey: string | null, maxPoints: number) => ({
   items: [{ id: "c1", label: "Gets the correct answer", description: `Final answer is correct${answerKey ? ` (${answerKey})` : ""}.`, points: maxPoints }],
   referenceSolution: answerKey ?? "Add a reference solution."

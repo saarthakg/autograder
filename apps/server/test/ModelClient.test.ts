@@ -105,7 +105,7 @@ describe("parseRetryAfter", () => {
   })
 })
 
-describe("fallback routing (D-19, D-30)", () => {
+describe("fallback routing", () => {
   it.effect("sends the models chain and only parameters every model supports, and reports who answered", () =>
     Effect.gen(function*() {
       const seen: Array<any> = []

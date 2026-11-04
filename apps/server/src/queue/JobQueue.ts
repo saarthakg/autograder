@@ -4,8 +4,8 @@ import { SqlClient, SqlError } from "effect/sql"
 
 /**
  * Durable job queue on Postgres (D-12). Every operation is ONE SQL
- * statement, so it behaves the same through Neon's transaction-mode pooler
- * (D-28). `attempts` doubles as a fencing token: a worker whose lease
+ * statement, so it behaves the same through Neon's transaction-mode pooler.
+ * `attempts` doubles as a fencing token: a worker whose lease
  * expired and was re-claimed elsewhere can no longer complete or retry it.
  */
 
@@ -46,7 +46,7 @@ const columns = `id, kind, payload, status, attempts, max_attempts AS "maxAttemp
 
 export class JobQueue extends Context.Service<JobQueue, {
   readonly enqueue: (input: EnqueueInput) => Effect.Effect<{ readonly id: JobId; readonly created: boolean }, SqlError.SqlError>
-  /** Claims the oldest due job if the global in-flight budget allows (D-12). */
+  /** Claims the oldest due job if the global in-flight budget allows. */
   readonly claim: (options: {
     readonly lease: Duration.Duration
     readonly maxInFlightGlobal: number
@@ -71,7 +71,7 @@ export class JobQueue extends Context.Service<JobQueue, {
     JobQueue,
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
-      // Decode failures mean our own SQL and schema disagree: a bug, not a runtime condition.
+      // Decode failures mean the queue's SQL and schema disagree: a bug, not a runtime condition.
       const rows = (effect: Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError>) =>
         effect.pipe(Effect.flatMap((r) => decodeRows(r).pipe(Effect.orDie)))
 

@@ -192,7 +192,7 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .score-moment .stroke-view { border: 1px solid var(--line); border-radius: 8px; max-width: 100%; }
 .score-side { flex: 1 1 14rem; }
 .submitted-label { font-weight: 700; margin: 0 0 0.2rem; }
-/* "Not yet" in neutral ink, never red (D-01). */
+/* "Not yet" in neutral ink, never red. */
 .not-yet { margin-top: 0.6rem; color: var(--muted); }
 .not-yet ul { list-style: none; padding: 0; margin: 0.2rem 0 0; }
 .not-yet li::before { content: "○ "; }

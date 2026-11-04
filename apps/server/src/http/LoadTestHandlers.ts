@@ -11,7 +11,7 @@ const utc = (d: Date | null) => d === null ? null : DateTime.fromDateUnsafe(d)
 const num = (x: unknown) => x === null || x === undefined ? null : Number(x)
 
 /**
- * Load-test operator endpoints (D-28). Everything a run creates carries its
+ * Load-test operator endpoints. Everything a run creates carries its
  * run_id, so analysis and cleanup are one query each.
  */
 export const LoadTestHandlers = HttpApiBuilder.group(

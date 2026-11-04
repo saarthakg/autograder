@@ -47,7 +47,7 @@ describe("checkVerdicts + totalPoints (code computes totals)", () => {
   })
 })
 
-describe("sample problems and eval cases (D-09, D-18)", () => {
+describe("sample problems and eval cases", () => {
   it("every sample rubric is valid for its problem's max points", async () => {
     const { SAMPLE_PROBLEMS } = await import("@autograder/domain")
     for (const p of SAMPLE_PROBLEMS) expect(rubricProblems(p.rubric, p.maxPoints)).toEqual([])

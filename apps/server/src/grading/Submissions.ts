@@ -5,7 +5,7 @@ import { JobQueue } from "../queue/JobQueue.ts"
 import { WakeSignal } from "../worker/WakeSignal.ts"
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
-/** Cropped grayscale ink is ~20–60 KB; anything far larger is a client bug (D-13). */
+/** Cropped grayscale ink is ~20–60 KB; anything far larger is a client bug. */
 const MAX_IMAGE_BYTES = 256 * 1024
 
 interface SubmitInput {
@@ -70,7 +70,7 @@ export class Submissions extends Context.Service<Submissions, {
               ? Effect.fail(new AlreadySubmitted({ message: "this problem was already submitted" }))
               : Effect.fail(e))
         )
-        // After commit: the job is durable, so a lost ring only delays pickup (D-28).
+        // After commit: the job is durable, so a lost ring only delays pickup.
         if (result.created) yield* wake.ring
         return result
       })

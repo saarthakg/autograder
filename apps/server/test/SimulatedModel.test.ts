@@ -24,7 +24,7 @@ const request = (seed: string): ModelRequest => ({
 })
 const decode = Schema.decodeUnknownSync(GradeOutput)
 
-describe("SimulatedModel (D-28)", () => {
+describe("SimulatedModel", () => {
   it.live("returns schema-valid output over the real criterion ids, deterministic per submission", () =>
     Effect.gen(function*() {
       const sim = make(healthy)

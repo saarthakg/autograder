@@ -1,5 +1,5 @@
 /**
- * Testing-day shapes (D-22). A scenario describes REAL-WORLD load;
+ * Testing-day shapes. A scenario describes REAL-WORLD load;
  * `speed` compresses think time and bell-schedule stagger so a run takes
  * minutes, and the generator runs 1/speed of the classes so the arrival
  * rate (submits/s) matches the real-world scenario. Each student then
@@ -45,7 +45,7 @@ export const SCENARIOS: Record<string, Scenario> = {
   },
   chaos: {
     ...base, name: "chaos",
-    description: "testing-day with the serving instance killed abruptly 40% of the way through (the one chaos check, D-28).",
+    description: "testing-day with the serving instance killed abruptly 40% of the way through (the one chaos check).",
     classes: 40, problems: 10, classStartWindowSec: 900, speed: 4, crashAt: 0.4
   },
   step: {
@@ -55,7 +55,7 @@ export const SCENARIOS: Record<string, Scenario> = {
   },
   canary: {
     ...base, name: "canary",
-    description: "Calibration (D-23): 50 REAL model calls through the deployed path as a burst at testing-day peak (about 5 submits/s for 10 s), behind the budget guard.",
+    description: "Calibration: 50 REAL model calls through the deployed path as a burst at testing-day peak (about 5 submits/s for 10 s), behind the budget guard.",
     classes: 1, studentsPerClass: 50, problems: 1, classStartWindowSec: 0, joinWindowSec: 10, thinkMedianSec: 5, thinkSigma: 0, speed: 1, realModel: true
   }
 }

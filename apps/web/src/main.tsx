@@ -11,7 +11,7 @@ import { NewAssignment } from "./teacher/NewAssignment.tsx"
 import { TeacherHome } from "./teacher/TeacherHome.tsx"
 import "./styles.css"
 
-// Dev-only fixture capture (D-18). In a production build DEV is false, so Vite drops the page and its chunk.
+// Dev-only fixture capture. In a production build DEV is false, so Vite drops the page and its chunk.
 const FixtureCapture = import.meta.env.DEV
   ? lazy(() => import("./dev/FixtureCapture.tsx").then((m) => ({ default: m.FixtureCapture })))
   : null

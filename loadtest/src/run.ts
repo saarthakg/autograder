@@ -122,7 +122,7 @@ export const runLoadTest = (o: RunOptions) =>
     const classesRun = classesToRun(s)
     const lastScheduledSubmitMs = Math.max(...plans.flatMap((p) => p.submitAtMs))
 
-    // --- warm up: cold start is measured and reported, never inside the SLOs (D-22) ------------
+    // --- warm up: cold start is measured and reported, never inside the SLOs ------------
     const cold = yield* call("GET", "/api/health", { timeoutMs: 60_000 })
     let dbWakeMs = 0
     for (let i = 0; i < 10; i++) {

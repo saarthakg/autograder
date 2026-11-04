@@ -28,7 +28,7 @@ const waitForStatus = (id: string, status: string, within: Duration.Duration) =>
 /** Base services shared by a test and the worker it starts. */
 const base = Layer.mergeAll(JobQueue.layer, WakeSignal.layer, Instance.layer).pipe(Layer.provideMerge(TestDb))
 
-/** Starts the worker in a child scope we can close to simulate SIGTERM. */
+/** Starts the worker in a child scope that can be closed to simulate SIGTERM. */
 const startWorker = (handlers: Record<string, Run>, worker?: Parameters<typeof testConfig>[0]) =>
   Effect.gen(function*() {
     const scope = yield* Scope.make()
@@ -41,7 +41,7 @@ const startWorker = (handlers: Record<string, Run>, worker?: Parameters<typeof t
   })
 
 describe("Worker (real Postgres)", () => {
-  it.live("a wake makes an idle worker pick up a new job immediately (D-27)", () =>
+  it.live("a wake makes an idle worker pick up a new job immediately", () =>
     Effect.gen(function*() {
       yield* truncateJobs
       const q = yield* JobQueue
@@ -81,7 +81,7 @@ describe("Worker (real Postgres)", () => {
       assert.strictEqual(dead.attempts, 2)
     }).pipe(Effect.scoped, Effect.provide(base)))
 
-  it.live("shutdown mid-job leaves the lease to expire, and the next worker finishes it (D-28)", () =>
+  it.live("shutdown mid-job leaves the lease to expire, and the next worker finishes it", () =>
     Effect.gen(function*() {
       yield* truncateJobs
       const q = yield* JobQueue

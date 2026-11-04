@@ -168,7 +168,7 @@ const program = (callsRef: Ref.Ref<ReadonlyArray<ModelCallRecord>>) => Effect.ge
 
   // --- projection, printed before anything runs ------------------------------
   const callsPerModel = projectedCases * k
-  // Use measured token medians from the latest run's calibration.json when we have them for a model.
+  // Use measured token medians from the latest run's calibration.json when they exist for a model.
   const measured = latestCalibration()
   const perCall = (i: ModelInfo) => {
     const m = measured[i.id]
