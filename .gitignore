@@ -1,33 +1,37 @@
-# Private working files (G6): brief, agent principles, agent memory
-.context/
-CLAUDE.md
-
-# Secrets (P27): only .env.example is committed
+# --- Secrets: only .env.example is committed ---
 .env
 .env.*
 !.env.example
 
-# Local reference clones (Effect source for API lookups)
+# --- Private local files: never committed ---
+.context/
+CLAUDE.md
+# Local reference clones of dependency source, for API lookups
 .repos/
 
-# Dependencies and build output
+# --- Dependencies and build output ---
 node_modules/
 dist/
 *.tsbuildinfo
 .vite/
 
-# Load-test run data: reports are regenerated per run; only curated
-# reports that LOADTEST.md links to are committed (force-add those).
+# --- Load test: per-run output stays local ---
+# Only the curated reports that LOADTEST.md links to are committed (git add -f).
 loadtest/reports/*
-!loadtest/reports/.gitkeep
 loadtest/.runs/
 
-# Eval scratch output. Per-run raw results stay local; summaries and the
-# compact calibration file are committed.
+# --- Eval: raw per-run results stay local ---
+# Each run's summary.md and compact calibration.json are committed.
 evals/.cache/
 evals/results/*/results.json
 
-# Tooling noise
+# --- e2e: local deps, per-run workspace records, Playwright output ---
+e2e/node_modules/
+e2e/.runs/
+e2e/test-results/
+e2e/playwright-report/
+
+# --- Editor, OS and tooling noise ---
 .DS_Store
 *.log
 coverage/
@@ -35,9 +39,3 @@ coverage/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
-
-# e2e: local deps, per-run workspace records, Playwright output
-e2e/node_modules/
-e2e/.runs/
-e2e/test-results/
-e2e/playwright-report/
