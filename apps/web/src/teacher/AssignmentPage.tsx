@@ -4,6 +4,7 @@ import { call, friendly } from "../api.ts"
 import { MathText } from "../components/Math.tsx"
 import { StrokeView } from "../components/StrokeView.tsx"
 import { navigate } from "../lib/router.ts"
+import { scoreBand } from "../lib/score.ts"
 import { usePoll } from "../lib/usePoll.ts"
 import { CopyButton } from "./CopyButton.tsx"
 import { WorkspaceLink } from "./TeacherHome.tsx"
@@ -311,10 +312,10 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
               {report.students.map((s) => (
                 <tr key={s.id}>
                   <th scope="row">{s.displayName}</th>
-                  {s.cells.map((c) => (
+                  {s.cells.map((c, i) => (
                     <td key={c.problemId}>
                       {c.submissionId === null ? <span className="cell empty" aria-label="Not started">·</span> : (
-                        <button className={`cell ${c.status}`} onClick={() => setOpen(c.submissionId)} aria-label={`${s.displayName} problem score`}>
+                        <button className={`cell ${c.status} ${c.score === null ? "" : scoreBand(c.score, report.problems[i]?.maxPoints ?? 0)}`} onClick={() => setOpen(c.submissionId)} aria-label={`${s.displayName} problem score`}>
                           {c.status === "grading" ? "…" : c.status === "needs_review" ? "⚑" : c.score}
                           {c.overridden && <span className="mark" title="You adjusted this">✎</span>}
                           {c.staleRubric && <span className="mark" title="Graded with an earlier rubric">↺</span>}

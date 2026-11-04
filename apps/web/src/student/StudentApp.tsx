@@ -7,6 +7,7 @@ import { StrokeView } from "../components/StrokeView.tsx"
 import { navigate } from "../lib/router.ts"
 import { drafts, drawingKey, type StudentSession, studentSession } from "../lib/storage.ts"
 import { usePoll } from "../lib/usePoll.ts"
+import { scoreBand } from "../lib/score.ts"
 import { renderPng } from "../whiteboard/ink.ts"
 import { Whiteboard } from "../whiteboard/Whiteboard.tsx"
 
@@ -98,7 +99,10 @@ const markSubmitted = (h: StudentHome, problemId: string, strokes: ReadonlyArray
     )
   })
 
-const chipClass = (p: StudentProblem) => p.submission === null ? "todo" : p.submission.state
+const chipClass = (p: StudentProblem) =>
+  p.submission === null ? "todo" :
+  p.submission.state === "graded" && p.submission.score !== null ? `graded ${scoreBand(p.submission.score, p.maxPoints)}` :
+  p.submission.state
 const chipLabel = (p: StudentProblem) =>
   p.submission === null ? "to do" :
   p.submission.state === "grading" ? "checking…" :

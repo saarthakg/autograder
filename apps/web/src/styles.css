@@ -131,6 +131,8 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .grid .averages th, .grid .averages td { color: var(--muted); font-size: 0.875rem; border-bottom: none; }
 .cell { min-width: 3rem; min-height: 36px; padding: 0 0.5rem; font-weight: 600; position: relative; }
 .cell.graded { background: var(--ok-bg); border-color: transparent; }
+.cell.graded.partial { background: var(--warn-bg); color: var(--warn); }
+.cell.graded.zero { background: var(--line); color: var(--ink); }
 .cell.needs_review { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
 .cell.grading { color: var(--muted); }
 .cell.empty { color: var(--line); font-size: 1.4rem; }
@@ -174,6 +176,8 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .chip small { color: var(--muted); font-size: 0.75rem; }
 .chip[aria-current="true"] { border: 2px solid var(--accent); }
 .chip.graded { background: var(--ok-bg); }
+.chip.graded.partial { background: var(--warn-bg); }
+.chip.graded.zero { background: var(--line); }
 .chip.grading small { font-style: italic; }
 .problem-screen .whiteboard { width: 100%; display: flex; }
 .whiteboard { display: flex; flex-direction: column; gap: 0.5rem; }
