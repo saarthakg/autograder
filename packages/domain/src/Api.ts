@@ -1,5 +1,6 @@
 import { HttpApi } from "effect/http-api"
 import { AdminApi } from "./Admin.ts"
+import { LoadTestApi } from "./LoadTest.ts"
 import { PublicApi, StudentApi, TeacherApi } from "./Product.ts"
 import { SystemApi } from "./System.ts"
 
@@ -10,5 +11,6 @@ export class Api extends HttpApi.make("autograder")
   .add(TeacherApi)
   .add(StudentApi)
   .add(AdminApi)
+  .add(LoadTestApi)
   .prefix("/api")
 {}

@@ -5,6 +5,7 @@ import { SqlClient } from "effect/sql"
 import { AppConfig } from "../AppConfig.ts"
 import { Instance } from "../Instance.ts"
 import { AdminHandlers } from "./AdminHandlers.ts"
+import { LoadTestHandlers } from "./LoadTestHandlers.ts"
 import { ProductHandlers } from "./ProductHandlers.ts"
 
 export const SystemHandlers = HttpApiBuilder.group(
@@ -34,4 +35,4 @@ export const SystemHandlers = HttpApiBuilder.group(
   })
 )
 
-export const ApiHandlers = Layer.mergeAll(SystemHandlers, AdminHandlers, ProductHandlers)
+export const ApiHandlers = Layer.mergeAll(SystemHandlers, AdminHandlers, LoadTestHandlers, ProductHandlers)

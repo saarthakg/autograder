@@ -15,6 +15,7 @@ import { Teachers } from "../../src/product/Teachers.ts"
 import { JobQueue } from "../../src/queue/JobQueue.ts"
 import { WakeSignal } from "../../src/worker/WakeSignal.ts"
 import { testConfig } from "./TestConfig.ts"
+import { SimulatedModel } from "../../src/model/SimulatedModel.ts"
 import { TestDb } from "./TestDb.ts"
 
 /** Rubric drafting always fails in tests, like a provider outage, exercising the template fallback (D-08). */
@@ -28,7 +29,7 @@ export const TestApp = ApiHandlers.pipe(
   Layer.provideMerge(Layer.mergeAll(Teachers.layer, Students.layer)),
   Layer.provideMerge(Layer.mergeAll(Submissions.layer, NoRubrics)),
   Layer.provideMerge(JobQueue.layer),
-  Layer.provideMerge(Layer.mergeAll(WakeSignal.layer, Instance.layer, BunServices.layer)),
+  Layer.provideMerge(Layer.mergeAll(WakeSignal.layer, Instance.layer, SimulatedModel.layer, BunServices.layer)),
   Layer.provide(testConfig()),
   Layer.provideMerge(TestDb),
   Layer.provideMerge(HttpServer.layerServices)
