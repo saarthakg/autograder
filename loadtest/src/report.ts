@@ -5,6 +5,20 @@ import { fmt, summary } from "./stats.ts"
 /** Blended real-model cost per grade at a 2% fallback rate (D-30): what this load would cost for real. */
 const BLENDED_COST_PER_GRADE = 0.0003
 
+/**
+ * Estimated database egress (Neon counts bytes sent from Postgres): every
+ * response body the app sent was read from Postgres first, plus each grade
+ * job reading the submission's image and rubric back (~2 KB besides the PNG).
+ * An estimate, stated as such in the report.
+ */
+export const transfer = (r: RunResult) => {
+  const responses = Object.values(r.endpoints).reduce((n, e) => n + e.bytes, 0)
+  const accepted = r.submits.filter((x) => x.acceptedId)
+  const gradeReads = accepted.reduce((n, x) => n + x.pngBytes + 2048, 0)
+  const total = responses + gradeReads
+  return { totalBytes: total, perSubmitBytes: accepted.length === 0 ? 0 : total / accepted.length }
+}
+
 export const measure = (r: RunResult): Measured => {
   const a = r.analysis
   const lastAccepted = a.lastAcceptedAt ? Date.parse(a.lastAcceptedAt) : null
@@ -112,6 +126,8 @@ Submit latency is also scored from each submit's scheduled send time (the SLO ab
 - Submissions: ${a.submissions} (${Object.entries(a.byStatus).map(([k, v]) => `${k} ${v}`).join(", ")}); flagged reasons: ${Object.entries(a.byReviewReason).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}.
 - Time to grade (s): p50 ${fmt(a.timeToGradeSec.p50, 1)}, p95 ${fmt(a.timeToGradeSec.p95, 1)}, p99 ${fmt(a.timeToGradeSec.p99, 1)}, max ${fmt(a.timeToGradeSec.max, 1)}.
 - Model calls by outcome: ${Object.entries(a.modelCalls).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}. Job retries ${a.jobRetries}, dead jobs ${a.deadJobs}.
+- Model latency, successful calls (ms): p50 ${fmt(a.modelLatencyMs.p50)}, p95 ${fmt(a.modelLatencyMs.p95)}, p99 ${fmt(a.modelLatencyMs.p99)}, max ${fmt(a.modelLatencyMs.max)} (${s.realModel ? "REAL provider" : "simulator"}).
+- Estimated database transfer: **${(transfer(r).totalBytes / 1e6).toFixed(1)} MB**, ${(transfer(r).perSubmitBytes / 1e3).toFixed(1)} KB per submission (response bodies read from Postgres, plus each grade job reading its image back).
 - Acknowledged submits checked against the database: ${r.submits.filter((x) => x.acceptedId).length}; missing ${a.missing.length}; not terminal after drain ${a.nonTerminal}.
 - Join failures: ${r.joinFailures}. Drain wait: ${r.drainWaitedSec.toFixed(0)} s.
 - Projected real-model cost of this load: ${a.submissions} grades × $${BLENDED_COST_PER_GRADE} ≈ **$${(a.submissions * BLENDED_COST_PER_GRADE).toFixed(2)}** (blended Luna + 2% sol fallback, D-30); this run spent ${s.realModel ? "real money (canary)" : "$0 on models"}.

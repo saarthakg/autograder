@@ -91,6 +91,13 @@ export const LoadTestHandlers = HttpApiBuilder.group(
             SELECT a.id FROM unnest(${payload.acceptedIds}::text[]) AS a(id)
             WHERE NOT EXISTS (SELECT 1 FROM submission s WHERE s.id::text = a.id)`
           const calls = yield* sql<{ k: string; n: number }>`SELECT outcome AS k, count(*)::int AS n FROM model_call WHERE run_id = ${runId} GROUP BY outcome`
+          const [lat] = yield* sql<{ n: number; p50: unknown; p95: unknown; p99: unknown; max: unknown }>`
+            SELECT count(*)::int AS n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50,
+                   percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95,
+                   percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99,
+                   max(latency_ms) AS max
+            FROM model_call WHERE run_id = ${runId} AND outcome = 'ok'`
           const [jobs] = yield* sql<{ retries: number; dead: number }>`
             SELECT coalesce(sum(greatest(attempts - 1, 0)), 0)::int AS retries, count(*) FILTER (WHERE status = 'dead')::int AS dead
             FROM job WHERE run_id = ${runId}`
@@ -117,6 +124,7 @@ export const LoadTestHandlers = HttpApiBuilder.group(
             lastAcceptedAt: utc(totals!.lastAccepted),
             lastGradedAt: utc(totals!.lastGraded),
             modelCalls: record(calls),
+            modelLatencyMs: { n: lat!.n, p50: num(lat!.p50), p95: num(lat!.p95), p99: num(lat!.p99), max: num(lat!.max) },
             jobRetries: jobs!.retries,
             deadJobs: jobs!.dead,
             timeline: buckets.map((b) => ({ t: b.t, accepted: b.accepted, graded: b.graded, ttgP95: num(b.ttgP95) }))

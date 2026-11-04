@@ -31,6 +31,7 @@ export interface SubmitRecord {
   readonly firstStatus: number
   readonly attempts: number
   readonly acceptedId: string | null
+  readonly pngBytes: number
 }
 
 export interface MetricsSample {
@@ -55,7 +56,7 @@ export interface RunResult {
   readonly lastScheduledSubmitMs: number
   readonly joinFailures: number
   readonly submits: ReadonlyArray<SubmitRecord>
-  readonly endpoints: Record<string, { latencies: Array<number>; statuses: Record<string, number> }>
+  readonly endpoints: Record<string, { latencies: Array<number>; statuses: Record<string, number>; bytes: number }>
   readonly lags: ReadonlyArray<number>
   readonly samples: ReadonlyArray<MetricsSample>
   readonly crash: { readonly atMs: number; readonly instanceId: string | null; readonly status: number } | null
@@ -66,7 +67,7 @@ export interface RunResult {
 /** The run couldn't start or finish (bad token, target down, analysis failed). */
 export class LoadTestError extends Schema.TaggedError<LoadTestError>()("LoadTestError", { message: Schema.String }) {}
 
-interface Res { readonly status: number; readonly json: any; readonly ms: number }
+interface Res { readonly status: number; readonly json: any; readonly ms: number; readonly bytes: number }
 
 /** One HTTP call; never fails: network errors and timeouts come back as status 0. */
 const http = (target: string, method: string, path: string, opts: { token?: string | undefined; body?: string | undefined; timeoutMs?: number } = {}) =>
@@ -82,27 +83,31 @@ const http = (target: string, method: string, path: string, opts: { token?: stri
       const text = await r.text()
       let json: unknown = null
       try { json = text ? JSON.parse(text) : null } catch { json = null }
-      return { status: r.status, json, ms: performance.now() - started }
+      return { status: r.status, json, ms: performance.now() - started, bytes: text.length }
     } catch {
-      return { status: 0, json: null, ms: performance.now() - started }
+      return { status: 0, json: null, ms: performance.now() - started, bytes: 0 }
     }
   })
 
 const ok = (s: number) => s >= 200 && s < 300
 const retryable = (s: number) => s === 0 || s >= 500 || s === 429
 
-/** Real fixture drawings, pre-serialised per sample problem (P30): payloads cost the generator nothing per send. */
+/**
+ * Real fixture drawings, pre-serialised per sample problem (P30). Only the
+ * smallest legible drawing per problem is used: Neon Free's 5 GB/month
+ * transfer is shared with prod, and the grade job reads each image back.
+ */
 const loadPayloads = (dir: string) => {
-  const byKey = new Map<string, Array<{ strokes: string; png: string }>>()
+  const byKey = new Map<string, { strokes: string; png: string; pngBytes: number }>()
   for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
     const caseKey = file.replace(/\.json$/, "")
-    if (caseKey.includes("illegible") || caseKey.includes("scribble")) continue // keep the canary's needs_review honest
+    if (caseKey.includes("illegible") || caseKey.includes("scribble")) continue // keep needs_review honest
     const problemKey = caseKey.split("-")[0]!
+    const png = readFileSync(join(dir, `${caseKey}.png`))
+    const current = byKey.get(problemKey)
+    if (current && current.pngBytes <= png.byteLength) continue
     const fx = JSON.parse(readFileSync(join(dir, file), "utf8")) as { strokes: unknown }
-    const png = readFileSync(join(dir, `${caseKey}.png`)).toString("base64")
-    const list = byKey.get(problemKey) ?? []
-    list.push({ strokes: JSON.stringify(fx.strokes), png })
-    byKey.set(problemKey, list)
+    byKey.set(problemKey, { strokes: JSON.stringify(fx.strokes), png: png.toString("base64"), pngBytes: png.byteLength })
   }
   return byKey
 }
@@ -144,8 +149,9 @@ export const runLoadTest = (o: RunOptions) =>
     // --- recorders -------------------------------------------------------------------------------
     const endpoints: RunResult["endpoints"] = {}
     const record = (name: string, r: Res) => {
-      const e = endpoints[name] ?? (endpoints[name] = { latencies: [], statuses: {} })
+      const e = endpoints[name] ?? (endpoints[name] = { latencies: [], statuses: {}, bytes: 0 })
       e.latencies.push(r.ms)
+      e.bytes += r.bytes
       e.statuses[String(r.status)] = (e.statuses[String(r.status)] ?? 0) + 1
     }
     const submits: Array<SubmitRecord> = []
@@ -203,8 +209,7 @@ export const runLoadTest = (o: RunOptions) =>
           const lag = now() - atMs
           lags.push(lag)
           const sample = SAMPLE_PROBLEMS[(p.position - 1) % SAMPLE_PROBLEMS.length]!.key
-          const variants = payloads.get(sample) ?? [...payloads.values()][0]!
-          const v = variants[(plan.studentIndex + i) % variants.length]!
+          const v = payloads.get(sample) ?? [...payloads.values()][0]!
           const body = `{"problemId":${JSON.stringify(p.id)},"idempotencyKey":"${crypto.randomUUID()}","strokes":${v.strokes},"imagePng":"${v.png}"}`
           // A real student whose submit fails presses Submit again: same key, so never a double submission (P23).
           let first: Res | null = null
@@ -219,7 +224,7 @@ export const runLoadTest = (o: RunOptions) =>
             if (!retryable(r.status)) break
             yield* Effect.sleep(Duration.seconds(2 ** attempt))
           }
-          submits.push({ scheduledMs: atMs, lagMs: lag, firstLatencyMs: lag + first!.ms, firstStatus: first!.status, attempts, acceptedId: accepted })
+          submits.push({ scheduledMs: atMs, lagMs: lag, firstLatencyMs: lag + first!.ms, firstStatus: first!.status, attempts, acceptedId: accepted, pngBytes: v.pngBytes })
           if (accepted) pending.add(p.id)
         }
         // Keep polling until this student's scores are in (a real tab stays open), up to 3 minutes.
@@ -228,14 +233,16 @@ export const runLoadTest = (o: RunOptions) =>
         yield* Fiber.interrupt(poller)
       })
 
-    // --- teachers poll their class report (real teachers every 10 s; scaled so the request rate matches) -
+    // --- teachers poll their class report like the web app: 10 s backing off ×1.5 to 30 s, -----------
+    // divided by speed so the request rate matches the real-world number of teachers.
     const teacher = (assignmentId: string) =>
       Effect.gen(function*() {
-        const every = Math.max(1_000, 10_000 / s.speed)
+        let delay = 10_000
         while (!(yield* Ref.get(done))) {
           const r = yield* call("GET", `/api/teacher/assignments/${assignmentId}/report`, { token: teacherSecret })
           record("report", r)
-          yield* Effect.sleep(Duration.millis(every))
+          yield* Effect.sleep(Duration.millis(Math.max(500, delay / s.speed)))
+          delay = Math.min(30_000, delay * 1.5)
         }
       })
 

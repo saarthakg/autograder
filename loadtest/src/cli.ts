@@ -2,7 +2,8 @@ import { Effect } from "effect"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { renderReport } from "./report.ts"
+import { readdirSync, readFileSync, statSync } from "node:fs"
+import { renderReport, transfer } from "./report.ts"
 import { runLoadTest } from "./run.ts"
 import { classesToRun, SCENARIOS } from "./scenarios.ts"
 import { DEFAULT_SLO } from "./slo.ts"
@@ -16,7 +17,8 @@ import { DEFAULT_SLO } from "./slo.ts"
  * Options: --classes N (real-world classes), --speed N, --scale K (multiplies
  * classes, to find where it breaks), --crash-at F (crash the serving instance
  * at fraction F of the run), --keep (skip cleanup), --admin-token T
- * (default: LOADTEST_ADMIN_TOKEN, then ADMIN_TOKEN from .env).
+ * (default: LOADTEST_ADMIN_TOKEN, then ADMIN_TOKEN from .env), --max-transfer-mb M
+ * (refuse a run projected above M MB of database transfer, default 700), --dry-run.
  * Exit code: 0 SHIP, 1 NO-SHIP, 2 INVALID, 3 error.
  */
 const arg = (name: string) => {
@@ -67,6 +69,23 @@ const main = async () => {
   const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12)
   const runId = arg("run-id") ?? `lt-${scenario.name}${scale !== 1 ? `-x${scale}` : ""}-${stamp}`
 
+  // Neon Free's transfer cap is shared with prod: project this run from the newest measured run first.
+  const plannedSubmits = classesToRun(scenario) * scenario.studentsPerClass * scenario.problems
+  const reportsDir = join(here, "..", "reports")
+  const measured = readdirSync(reportsDir)
+    .filter((d) => { try { return statSync(join(reportsDir, d, "raw.json")).isFile() } catch { return false } })
+    .map((d) => ({ d, t: statSync(join(reportsDir, d, "raw.json")).mtimeMs }))
+    .sort((x, y) => y.t - x.t)
+    .map(({ d }) => JSON.parse(readFileSync(join(reportsDir, d, "raw.json"), "utf8")).transfer?.perSubmitBytes as number | undefined)
+    .find((x) => typeof x === "number" && x > 0)
+  if (measured !== undefined) {
+    const mb = (plannedSubmits * measured) / 1e6
+    const max = Number(arg("max-transfer-mb") ?? 700)
+    log(`projected database transfer: ${plannedSubmits} submits × ${(measured / 1e3).toFixed(1)} KB ≈ ${mb.toFixed(0)} MB (limit ${max} MB)`)
+    if (mb > max) { log("Over the transfer limit for one run; lower --scale/--classes or raise --max-transfer-mb."); return 3 }
+  } else log(`no measured transfer yet: run smoke first to measure bytes per submission (${plannedSubmits} submits planned)`)
+  if (flag("dry-run")) return 0
+
   if (scenario.realModel) {
     const grades = classesToRun(scenario) * scenario.studentsPerClass * scenario.problems
     // Measured blended cost (D-30) with the eval's safety margins: ×1.25 retries, ×1.5 safety.
@@ -80,7 +99,7 @@ const main = async () => {
   const dir = join(here, "..", "reports", runId)
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, "report.md"), markdown)
-  writeFileSync(join(dir, "raw.json"), JSON.stringify(result))
+  writeFileSync(join(dir, "raw.json"), JSON.stringify({ ...result, transfer: transfer(result) }))
   log(`report: ${join(dir, "report.md")}`)
   console.log(`\n${markdown.split("\n## Where")[0]}`)
   if (!flag("keep")) await cleanup(runId)

@@ -48,10 +48,15 @@ export const SCENARIOS: Record<string, Scenario> = {
     description: "testing-day with the serving instance killed abruptly 40% of the way through (the one chaos check, D-28).",
     classes: 40, problems: 10, classStartWindowSec: 900, speed: 4, crashAt: 0.4
   },
+  step: {
+    ...base, name: "step",
+    description: "Breakpoint step: testing-day's peak rate held for about 3.5 minutes (no stagger, 10× speed). Use --scale K for K× the load.",
+    classes: 40, problems: 10, classStartWindowSec: 0, speed: 10
+  },
   canary: {
     ...base, name: "canary",
-    description: "Calibration (D-23): 25 students × 2 problems = 50 REAL model calls through the deployed path, behind the budget guard.",
-    classes: 1, studentsPerClass: 25, problems: 2, classStartWindowSec: 0, joinWindowSec: 30, speed: 10, realModel: true
+    description: "Calibration (D-23): 50 REAL model calls through the deployed path as a burst at testing-day peak (about 5 submits/s for 10 s), behind the budget guard.",
+    classes: 1, studentsPerClass: 50, problems: 1, classStartWindowSec: 0, joinWindowSec: 10, thinkMedianSec: 5, thinkSigma: 0, speed: 1, realModel: true
   }
 }
 

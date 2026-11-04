@@ -45,6 +45,8 @@ export class RunAnalysis extends Schema.Class<RunAnalysis>("RunAnalysis")({
   lastAcceptedAt: Schema.NullOr(Schema.DateTimeUtcFromString),
   lastGradedAt: Schema.NullOr(Schema.DateTimeUtcFromString),
   modelCalls: Schema.Record(Schema.String, Schema.Int),
+  /** Provider latency of successful calls, ms (real for the canary, simulated otherwise). */
+  modelLatencyMs: Percentiles,
   jobRetries: Schema.Int,
   deadJobs: Schema.Int,
   /** 10-second buckets from the first acceptance: where it slows down. */
