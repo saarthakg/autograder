@@ -22,6 +22,8 @@ export function StudentApp() {
   const [session] = useState<StudentSession | null>(() => studentSession.read())
   const [home, setHome] = useState<StudentHome | null>(null)
   const [current, setCurrent] = useState(0)
+  // Submitted drawings, kept from the submit or fetched once; never re-sent by polling.
+  const [work, setWork] = useState<ReadonlyMap<string, ReadonlyArray<Stroke>>>(new Map())
   const [error, setError] = useState<string | null>(null)
 
   // On first load (join, rejoin, return visit), open the first unfinished problem, or the summary.
@@ -83,9 +85,12 @@ export function StudentApp() {
             closed={home.status !== "open"}
             onSubmitted={(strokes) => {
               // Show "Grading…" at once (no flash of the old state), then fetch the real state.
-              setHome((h) => h && markSubmitted(h, problem.id, strokes))
+              setWork((w) => new Map(w).set(problem.id, strokes))
+              setHome((h) => h && markSubmitted(h, problem.id))
               refresh()
             }}
+            work={work.get(problem.id)}
+            onWork={(strokes) => setWork((w) => new Map(w).set(problem.id, strokes))}
             onNext={() => {
               const next = home.problems.findIndex((p, i) => i > current && p.submission === null)
               const firstOpen = home.problems.findIndex((p, i) => i !== current && p.submission === null)
@@ -98,11 +103,11 @@ export function StudentApp() {
 }
 
 /** Optimistic local state right after a submit: the server's answer replaces it a moment later. */
-const markSubmitted = (h: StudentHome, problemId: string, strokes: ReadonlyArray<Stroke>): StudentHome =>
+const markSubmitted = (h: StudentHome, problemId: string): StudentHome =>
   new StudentHome({
     ...h,
     problems: h.problems.map((p) =>
-      p.id !== problemId || p.submission !== null ? p : new StudentProblem({ ...p, submission: { state: "grading", score: null, metLabels: [], notYetLabels: [], strokes } })
+      p.id !== problemId || p.submission !== null ? p : new StudentProblem({ ...p, submission: { state: "grading", score: null, metLabels: [], notYetLabels: [] } })
     )
   })
 
@@ -141,6 +146,8 @@ function ProblemScreen(props: {
   readonly onSubmitted: (strokes: ReadonlyArray<Stroke>) => void
   readonly onNext: () => void
   readonly hasNext: boolean
+  readonly work: ReadonlyArray<Stroke> | undefined
+  readonly onWork: (strokes: ReadonlyArray<Stroke>) => void
 }) {
   const p = props.problem
   // Restore unsubmitted work for THIS student and problem (refresh, tab switch).
@@ -170,7 +177,7 @@ function ProblemScreen(props: {
     <section className="problem-screen">
       <h2 className="problem-text"><span className="muted">Problem {p.position}.</span> <MathText text={p.prompt} /></h2>
       {p.submission !== null ? (
-        <Submitted problem={p} onNext={props.onNext} hasNext={props.hasNext} />
+        <Submitted problem={p} onNext={props.onNext} hasNext={props.hasNext} token={props.token} work={props.work} onWork={props.onWork} />
       ) : (
         <>
           <Whiteboard height={height} initial={initial} onChange={onChange} />
@@ -193,12 +200,28 @@ function ProblemScreen(props: {
  * never ego-framed (D-01, Butler): what the work did, not a rank, and "Not
  * yet" in neutral ink, never red. "Next" never waits on the grader (P8).
  */
-function Submitted(props: { readonly problem: StudentProblem; readonly onNext: () => void; readonly hasNext: boolean }) {
+function Submitted(props: {
+  readonly problem: StudentProblem
+  readonly onNext: () => void
+  readonly hasNext: boolean
+  readonly token: string
+  readonly work: ReadonlyArray<Stroke> | undefined
+  readonly onWork: (strokes: ReadonlyArray<Stroke>) => void
+}) {
   const s = props.problem.submission!
+  // After a reload or on another device, fetch the drawing once.
+  const { work, onWork, token } = props
+  const id = props.problem.id
+  const asked = useRef(false)
+  useEffect(() => {
+    if (work !== undefined || asked.current) return
+    asked.current = true
+    call({ student: token }, (c) => c.student.work({ params: { id } })).then((r) => { if (r.ok) onWork(r.value.strokes) })
+  }, [work, onWork, token, id])
   return (
     <div className="submitted">
       <div className="score-moment">
-        <StrokeView strokes={s.strokes} width={320} height={180} />
+        <StrokeView strokes={props.work ?? []} width={320} height={180} />
         <div className="score-side" aria-live="polite">
           {s.state === "grading" && <><p className="submitted-label">Submitted ✓</p><p className="muted">Grading…</p></>}
           {s.state === "teacher_check" && <><p className="submitted-label">Submitted ✓</p><p>Your teacher will check this one.</p></>}

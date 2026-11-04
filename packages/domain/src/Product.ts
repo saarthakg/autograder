@@ -303,9 +303,7 @@ export class StudentProblem extends Schema.Class<StudentProblem>("StudentProblem
     /** Labels of met criteria, task-framed (D-01). Empty when the teacher shows score only. */
     metLabels: Schema.Array(Schema.String),
     /** Labels of criteria not met yet; only when the teacher chose "met + Not yet" (D-01). */
-    notYetLabels: Schema.Array(Schema.String),
-    /** The student's own work, so the score sits next to what they drew. */
-    strokes: Strokes
+    notYetLabels: Schema.Array(Schema.String)
   }))
 }) {}
 
@@ -323,6 +321,8 @@ export class StudentHome extends Schema.Class<StudentHome>("StudentHome")({
 export class StudentApi extends HttpApiGroup.make("student")
   .add(
     HttpApiEndpoint.get("home", "/me", { success: StudentHome }),
+    /** The student's own submitted drawing, fetched once for the score moment; never part of polling. */
+    HttpApiEndpoint.get("work", "/problems/:id/work", { params: { id: Schema.String }, success: Schema.Struct({ strokes: Strokes }), error: NotFound }),
     HttpApiEndpoint.post("submit", "/submissions", {
       payload: Schema.Struct({
         problemId: Schema.String,

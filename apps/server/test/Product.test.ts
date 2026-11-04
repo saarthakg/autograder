@@ -175,7 +175,8 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
 
         let sub = yield* seen
         assert.deepStrictEqual([sub.score, sub.metLabels, sub.notYetLabels], [3, [l1, l3], []])
-        assert.strictEqual(sub.strokes.length, STROKES.length) // their own work comes back with the score
+        // Their own work is a separate, one-time fetch: polling stays small (no strokes in home).
+        assert.strictEqual((yield* student.student.work({ params: { id: p1.id } })).strokes.length, STROKES.length)
 
         yield* teacher.teacher.setStudentView({ params: { id: assignment.id }, payload: { studentView: "met_not_yet" } })
         sub = yield* seen

@@ -57,6 +57,10 @@ export const StudentHandlers = HttpApiBuilder.group(Api, "student", Effect.fn(fu
       const me = yield* CurrentStudent
       return yield* students.home(me.id)
     })),
+    work: ({ params }) => sqlDefect(Effect.gen(function*() {
+      const me = yield* CurrentStudent
+      return yield* students.work(me.id, params.id)
+    })),
     submit: ({ payload }) => sqlDefect(Effect.gen(function*() {
       const me = yield* CurrentStudent
       const r = yield* students.submit(me.id, me.assignmentId, payload)

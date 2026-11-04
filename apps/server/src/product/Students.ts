@@ -77,8 +77,9 @@ const make = Effect.gen(function*() {
       SELECT p.id, p.position, p.prompt_md AS prompt, p.max_points AS "maxPoints", r.items, r.reference_solution AS "referenceSolution"
       FROM problem p JOIN rubric r ON r.problem_id = p.id AND r.version = p.current_rubric_version
       WHERE p.assignment_id = ${me!.assignmentId} ORDER BY p.position`
-    const subs = yield* sql<{ problemId: string; status: SubmissionStatus; strokes: unknown; verdicts: ReadonlyArray<StoredVerdict> | null; gradedItems: unknown; overrides: Record<string, boolean> | null }>`
-      SELECT s.problem_id AS "problemId", s.status, s.strokes, g.verdicts, gr.items AS "gradedItems",
+    // Polled while a score is pending (D-24): kept small, so no strokes or images here.
+    const subs = yield* sql<{ problemId: string; status: SubmissionStatus; verdicts: ReadonlyArray<StoredVerdict> | null; gradedItems: unknown; overrides: Record<string, boolean> | null }>`
+      SELECT s.problem_id AS "problemId", s.status, g.verdicts, gr.items AS "gradedItems",
              (SELECT jsonb_object_agg(o.criterion_id, o.met) FROM override o WHERE o.submission_id = s.id) AS overrides
       FROM submission s
       LEFT JOIN LATERAL (SELECT * FROM grade WHERE submission_id = s.id ORDER BY rubric_version DESC LIMIT 1) g ON true
@@ -109,12 +110,17 @@ const make = Effect.gen(function*() {
             score: state === "graded" ? eff.score : null,
             // D-01: task-framed labels; "Not yet" only when the teacher opts in.
             metLabels: view === "score" ? [] : labels(true),
-            notYetLabels: view === "met_not_yet" ? labels(false) : [],
-            strokes: decodeStrokes(s.strokes)
+            notYetLabels: view === "met_not_yet" ? labels(false) : []
           }
         })
       })
     })
+  })
+
+  const work = Effect.fn("Students.work")(function*(studentId: string, problemId: string) {
+    const rows = yield* sql<{ strokes: unknown }>`SELECT strokes FROM submission WHERE student_id = ${studentId} AND problem_id::text = ${problemId}`
+    if (rows[0] === undefined) return yield* new NotFound({ message: "no submission for that problem" })
+    return { strokes: decodeStrokes(rows[0].strokes) }
   })
 
   const submit = Effect.fn("Students.submit")(function*(studentId: string, assignmentId: string, input: { problemId: string; idempotencyKey: string; strokes: Strokes; imagePng: Uint8Array }) {
@@ -128,5 +134,5 @@ const make = Effect.gen(function*() {
     return yield* submissions.submit({ ...input, studentId, runId: a.runId ?? undefined })
   })
 
-  return { join, rejoin, authenticate, home, submit }
+  return { join, rejoin, authenticate, home, work, submit }
 })
