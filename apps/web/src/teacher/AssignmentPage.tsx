@@ -501,7 +501,16 @@ function SubmissionDrawer(props: { readonly secret: string; readonly id: string;
                 </li>
               ))}
             </ul>
-            <p className="score-line">Score: <strong>{d.score === null ? "–" : d.score}</strong> / {d.maxPoints}{d.model && <span className="muted small"> · graded by <code>{d.model}</code>{d.provider && <> via {d.provider}</>}</span>}</p>
+            <p className="score-line">
+              Score: <strong>{d.score === null ? "–" : d.score}</strong> / {d.maxPoints}
+              {d.usedFallback && <span className="pill warn" title="The main grading model was unavailable, so a backup model graded this one.">Graded by backup model</span>}
+            </p>
+            {d.model && (
+              <details className="grading-details">
+                <summary className="small muted">Grading details</summary>
+                <p className="small muted">Model <code>{d.model}</code>{d.provider && <> via {d.provider}</>}{d.confidence && <> · confidence {d.confidence}</>}</p>
+              </details>
+            )}
           </>
         )}
       </aside>

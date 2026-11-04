@@ -162,7 +162,8 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .seg button:last-child { border-radius: 0 8px 8px 0; margin-left: -1px; }
 .seg button[aria-pressed="true"]:first-child { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
 .seg button[aria-pressed="true"]:last-child { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
-.score-line { font-size: 1.1rem; }
+.score-line { font-size: 1.1rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.grading-details { margin-top: 0.4rem; }
 
 /* Student */
 .join .code-input { font-size: 1.4rem; letter-spacing: 0.15em; text-transform: uppercase; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

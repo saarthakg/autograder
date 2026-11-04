@@ -211,6 +211,8 @@ export class SubmissionDetail extends Schema.Class<SubmissionDetail>("Submission
   model: Schema.NullOr(Schema.String),
   /** The OpenRouter provider that served that model, when reported. */
   provider: Schema.NullOr(Schema.String),
+  /** The backup model answered because the primary's providers were failing (D-30). */
+  usedFallback: Schema.Boolean,
   criteria: Schema.Array(CriterionDetail),
   /** Null until every criterion has a verdict (model or teacher). */
   score: Schema.NullOr(Schema.Int),

@@ -23,6 +23,7 @@ import {
 } from "@autograder/domain"
 import { Context, DateTime, Duration, Effect, Layer, Schema } from "effect"
 import { SqlClient } from "effect/sql"
+import { AppConfig } from "../AppConfig.ts"
 import { RubricGenerator } from "../grading/RubricGenerator.ts"
 import { newSecret, shortCode } from "./Codes.ts"
 import { effective, reviewRisk, type StoredVerdict, type SubmissionStatus, templateRubric } from "./Scoring.ts"
@@ -67,6 +68,7 @@ export class Teachers extends Context.Service<Teachers, Effect.Success<typeof ma
 const make = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
   const rubrics = yield* RubricGenerator
+  const config = yield* AppConfig
 
   const problemsOf = (assignmentId: string) =>
     sql<ProblemRow>`
@@ -390,6 +392,7 @@ const make = Effect.gen(function*() {
       confidence: s.confidence,
       model: s.model,
       provider: s.provider,
+      usedFallback: s.model !== null && config.model.gradingFallbackModels.includes(s.model),
       criteria: rubric.items.map((i) => new CriterionDetail({
         id: i.id,
         label: i.label,
