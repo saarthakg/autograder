@@ -77,7 +77,7 @@ Needs Bun 1.4 and Docker.
 bun install
 docker compose up -d --wait                      # Postgres 17 (dev + test DBs)
 cp .env.example .env                             # add OPENROUTER_API_KEY for real grading
-(cd apps/server && bun --env-file=../../.env src/migrate.ts)
+bun run migrate                                  # schema into the dev DB
 bun run build && bun run dev                     # http://localhost:3000
 bun run typecheck && bun run test                # in a second terminal
 ```
