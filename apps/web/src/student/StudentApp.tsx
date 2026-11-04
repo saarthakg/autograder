@@ -1,6 +1,6 @@
 import { Stroke, StudentHome, StudentProblem } from "@autograder/domain"
 import { Schema } from "effect"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { call, friendly } from "../api.ts"
 import { MathText } from "../components/Math.tsx"
 import { StrokeView } from "../components/StrokeView.tsx"
@@ -24,9 +24,16 @@ export function StudentApp() {
   const [current, setCurrent] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
+  // On first load (join, rejoin, return visit), open the first unfinished problem, or the summary.
+  const positioned = useRef(false)
   const refresh = useCallback(async () => {
     if (!session) return
     const r = await call({ student: session.token }, (c) => c.student.home())
+    if (r.ok && !positioned.current) {
+      positioned.current = true
+      const open = r.value.problems.findIndex((p) => p.submission === null)
+      setCurrent(open >= 0 ? open : r.value.problems.length)
+    }
     if (r.ok) setHome(r.value)
     else if (r.tag === "Unauthorized") { studentSession.forget(); navigate("/join") }
     else setError(friendly(r))
@@ -50,8 +57,8 @@ export function StudentApp() {
           <strong>{home.assignmentTitle}</strong>
           <span className="muted small"> · {home.displayName}</span>
         </div>
-        <span className="muted small" title="Use this with the class code to get back in on another device">
-          Rejoin code: <strong className="mono">{home.rejoinCode}</strong>
+        <span className="muted small">
+          To continue on another device: class code <strong className="mono">{home.classCode}</strong> + rejoin code <strong className="mono">{home.rejoinCode}</strong>
         </span>
       </header>
       <nav className="chips" aria-label="Problems">
