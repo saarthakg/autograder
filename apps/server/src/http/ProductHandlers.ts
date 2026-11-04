@@ -7,7 +7,7 @@ import { Students } from "../product/Students.ts"
 import { Teachers } from "../product/Teachers.ts"
 import { sqlDefect } from "./sqlDefect.ts"
 
-export const PublicHandlers = HttpApiBuilder.group(Api, "public", Effect.fn(function*(handlers) {
+const PublicHandlers = HttpApiBuilder.group(Api, "public", Effect.fn(function*(handlers) {
   const sql = yield* SqlClient.SqlClient
   const teachers = yield* Teachers
   const students = yield* Students
@@ -31,7 +31,7 @@ const asTeacher = <A, E, R>(f: (teacherId: string) => Effect.Effect<A, E, R>) =>
     return yield* f(teacher.id)
   }))
 
-export const TeacherHandlers = HttpApiBuilder.group(Api, "teacher", Effect.fn(function*(handlers) {
+const TeacherHandlers = HttpApiBuilder.group(Api, "teacher", Effect.fn(function*(handlers) {
   const t = yield* Teachers
   return handlers.handleAll({
     listAssignments: () => asTeacher(t.list),
@@ -50,7 +50,7 @@ export const TeacherHandlers = HttpApiBuilder.group(Api, "teacher", Effect.fn(fu
   })
 }))
 
-export const StudentHandlers = HttpApiBuilder.group(Api, "student", Effect.fn(function*(handlers) {
+const StudentHandlers = HttpApiBuilder.group(Api, "student", Effect.fn(function*(handlers) {
   const students = yield* Students
   return handlers.handleAll({
     home: () => sqlDefect(Effect.gen(function*() {

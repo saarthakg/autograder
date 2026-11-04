@@ -44,7 +44,7 @@ export interface ModelResponse {
  * rate limits wait for Retry-After, 402 means the key is out of credit, and a
  * bad request never succeeds on retry.
  */
-export const ModelErrorKind = Schema.Literals([
+const ModelErrorKind = Schema.Literals([
   "rate_limited",
   "provider_error",
   "timeout",
@@ -132,7 +132,7 @@ export const parseRetryAfter = (value: string | undefined, now: number): Duratio
   return Number.isNaN(at) ? undefined : Duration.millis(Math.max(0, at - now))
 }
 
-export const classifyStatus = (status: number): ModelErrorKind =>
+const classifyStatus = (status: number): ModelErrorKind =>
   status === 429 ? "rate_limited" :
   status === 402 ? "credits_exhausted" :
   status === 408 || status >= 500 ? "provider_error" :
@@ -144,7 +144,7 @@ export const classifyStatus = (status: number): ModelErrorKind =>
  * (P14: check supported_parameters, don't assume). Many current models are
  * reasoning models that reject `temperature`.
  */
-export const buildBody = (request: ModelRequest, supported: ReadonlySet<string> | undefined) => {
+const buildBody = (request: ModelRequest, supported: ReadonlySet<string> | undefined) => {
   const userContent: Array<object> = [{ type: "text", text: request.text }]
   if (request.imagePng !== undefined) {
     userContent.push({

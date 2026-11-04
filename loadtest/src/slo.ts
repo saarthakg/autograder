@@ -34,9 +34,9 @@ export const DEFAULT_SLO: SloConfig = Schema.decodeUnknownSync(SloConfig)({
   generatorLagMs: { p99: 250 }
 })
 
-export type Outcome = "PASS" | "FAIL" | "REPORT"
+type Outcome = "PASS" | "FAIL" | "REPORT"
 
-export interface SloResult {
+interface SloResult {
   readonly name: string
   readonly target: string
   readonly actual: string

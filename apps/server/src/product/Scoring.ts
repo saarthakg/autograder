@@ -11,7 +11,7 @@ export interface StoredVerdict {
   readonly evidence: string
 }
 
-export interface Effective {
+interface Effective {
   /** Per criterion: override ?? model verdict ?? null (no verdict yet). */
   readonly met: ReadonlyMap<string, boolean | null>
   /** Null until every criterion has a verdict. */
@@ -50,7 +50,7 @@ export const studentState = (
   return eff.score !== null ? "graded" : "teacher_check"
 }
 
-export interface ReviewCandidate {
+interface ReviewCandidate {
   readonly status: SubmissionStatus
   readonly reviewReason: string | null
   readonly confidence: "high" | "medium" | "low" | null
@@ -83,9 +83,3 @@ export const templateRubric = (answerKey: string | null, maxPoints: number) => (
   items: [{ id: "c1", label: "Gets the correct answer", description: `Final answer is correct${answerKey ? ` (${answerKey})` : ""}.`, points: maxPoints }],
   referenceSolution: answerKey ?? "Add a reference solution."
 })
-
-export const toCsv = (rows: ReadonlyArray<ReadonlyArray<string | number | null>>): string =>
-  rows.map((r) => r.map((c) => {
-    const s = c === null ? "" : String(c)
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }).join(",")).join("\n")

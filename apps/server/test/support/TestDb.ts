@@ -11,7 +11,7 @@ import { runMigrations } from "../../src/Migrations.ts"
  */
 const migrationsDir = fileURLToPath(new URL("../../migrations", import.meta.url))
 
-export const TestPg = Layer.unwrap(
+const TestPg = Layer.unwrap(
   Effect.gen(function*() {
     // Default matches docker-compose.yml; CI sets TEST_DATABASE_URL explicitly.
     const url = yield* Config.String("TEST_DATABASE_URL").pipe(

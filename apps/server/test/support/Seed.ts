@@ -5,7 +5,7 @@ import { SqlClient } from "effect/sql"
 export const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
 export const STROKES = [new Stroke({ points: [[10, 10, 0.5, 0], [20, 20, 0.5, 16]] })]
 
-export const RUBRIC_ITEMS = [
+const RUBRIC_ITEMS = [
   { id: "c1", label: "Distributes 3", description: "Writes 3x - 6", points: 1 },
   { id: "c2", label: "Isolates x", description: "Reaches x - 6 = 5", points: 1 },
   { id: "c3", label: "Finds x = 11", description: "Answer x = 11", points: 2 }

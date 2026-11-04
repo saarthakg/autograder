@@ -6,9 +6,9 @@ import { WakeSignal } from "../worker/WakeSignal.ts"
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 /** Cropped grayscale ink is ~20–60 KB; anything far larger is a client bug (D-13). */
-export const MAX_IMAGE_BYTES = 256 * 1024
+const MAX_IMAGE_BYTES = 256 * 1024
 
-export interface SubmitInput {
+interface SubmitInput {
   readonly studentId: string
   readonly problemId: string
   readonly idempotencyKey: string
@@ -17,7 +17,7 @@ export interface SubmitInput {
   readonly runId?: string | undefined
 }
 
-export const isPng = (bytes: Uint8Array) => PNG_MAGIC.every((b, i) => bytes[i] === b)
+const isPng = (bytes: Uint8Array) => PNG_MAGIC.every((b, i) => bytes[i] === b)
 
 /**
  * Accept-and-queue (P8, P24): the submission row and its grading job commit

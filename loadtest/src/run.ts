@@ -15,7 +15,7 @@ import { buildTimeline, peakRate, type StudentPlan } from "./timeline.ts"
  * each request's SCHEDULED send time, so a slow server can't hide by slowing
  * the generator down (P31).
  */
-export interface RunOptions {
+interface RunOptions {
   readonly target: string
   readonly adminToken: string
   readonly runId: string
@@ -65,7 +65,7 @@ export interface RunResult {
 }
 
 /** The run couldn't start or finish (bad token, target down, analysis failed). */
-export class LoadTestError extends Schema.TaggedError<LoadTestError>()("LoadTestError", { message: Schema.String }) {}
+class LoadTestError extends Schema.TaggedError<LoadTestError>()("LoadTestError", { message: Schema.String }) {}
 
 interface Res { readonly status: number; readonly json: any; readonly ms: number; readonly bytes: number }
 

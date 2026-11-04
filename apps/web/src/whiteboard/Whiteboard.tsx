@@ -2,7 +2,7 @@ import { Stroke, type StrokePoint } from "@autograder/domain"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { hitsStroke, strokePath } from "./ink.ts"
 
-export type Tool = "pen" | "eraser"
+type Tool = "pen" | "eraser"
 
 /**
  * Minimal whiteboard on perfect-freehand (P12): pen, stroke eraser, undo,

@@ -13,6 +13,5 @@ export const summary = (xs: ReadonlyArray<number>) => ({
   p99: percentile(xs, 99),
   max: xs.length === 0 ? null : Math.max(...xs)
 })
-export type Summary = ReturnType<typeof summary>
 
 export const fmt = (x: number | null | undefined, digits = 0, unit = "") => x === null || x === undefined ? "–" : `${x.toFixed(digits)}${unit}`

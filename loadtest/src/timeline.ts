@@ -2,7 +2,7 @@ import type { Scenario } from "./scenarios.ts"
 import { classesToRun } from "./scenarios.ts"
 
 /** Seeded PRNG (mulberry32), so a scenario's timeline is reproducible run to run. */
-export const rng = (seed: number) => () => {
+const rng = (seed: number) => () => {
   seed |= 0; seed = (seed + 0x6d2b79f5) | 0
   let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t

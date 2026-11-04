@@ -2,7 +2,7 @@ import type { Stroke, StrokePoint } from "@autograder/domain"
 import { getStroke } from "perfect-freehand"
 
 /** Shared pen look: the canvas and the PNG sent to the model must match (P16). */
-export const PEN = { size: 4, thinning: 0.5, smoothing: 0.5, streamline: 0.5 } as const
+const PEN = { size: 4, thinning: 0.5, smoothing: 0.5, streamline: 0.5 } as const
 
 type Pt = { readonly points: ReadonlyArray<StrokePoint> }
 

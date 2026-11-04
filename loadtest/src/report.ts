@@ -19,7 +19,7 @@ export const transfer = (r: RunResult) => {
   return { totalBytes: total, perSubmitBytes: accepted.length === 0 ? 0 : total / accepted.length }
 }
 
-export const measure = (r: RunResult): Measured => {
+const measure = (r: RunResult): Measured => {
   const a = r.analysis
   const lastAccepted = a.lastAcceptedAt ? Date.parse(a.lastAcceptedAt) : null
   const lastGraded = a.lastGradedAt ? Date.parse(a.lastGradedAt) : null

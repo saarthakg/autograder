@@ -10,7 +10,7 @@ export interface PromptTemplate {
   readonly user: string
 }
 
-export class PromptError extends Data.TaggedError("PromptError")<{ readonly message: string }> {}
+class PromptError extends Data.TaggedError("PromptError")<{ readonly message: string }> {}
 
 export const parsePrompt = (id: string, text: string): PromptTemplate => {
   const body = text.replace(/<!--[\s\S]*?-->/g, "")

@@ -8,9 +8,9 @@ import { HttpApiClient, HttpApiMiddleware } from "effect/http-api"
  * or endpoint in packages/domain breaks the web build, not production.
  */
 const makeClient = HttpApiClient.make(Api, { baseUrl: window.location.origin })
-export type Client = Effect.Success<typeof makeClient>
+type Client = Effect.Success<typeof makeClient>
 
-export interface Tokens {
+interface Tokens {
   readonly teacher?: string | undefined
   readonly student?: string | undefined
   readonly admin?: string | undefined
@@ -27,7 +27,7 @@ const layers = (t: Tokens) =>
     HttpApiMiddleware.layerClient(AdminAuth, ({ next, request }) => next(bearer(request, t.admin)))
   )
 
-export type Outcome<A> =
+type Outcome<A> =
   | { readonly ok: true; readonly value: A }
   | { readonly ok: false; readonly tag: string; readonly message: string; readonly error: unknown }
 

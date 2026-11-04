@@ -8,9 +8,9 @@ import { ModelClient, type ModelError } from "../model/ModelClient.ts"
 import { InvalidModelOutput } from "./Grader.ts"
 import { loadPrompt, render } from "./Prompts.ts"
 
-export const RUBRIC_PROMPT = "rubric.v2"
+const RUBRIC_PROMPT = "rubric.v2"
 
-export interface RubricRequest {
+interface RubricRequest {
   readonly prompt: string
   readonly answerKey: string | null
   readonly maxPoints: number

@@ -23,7 +23,7 @@ export class JobRow extends Schema.Class<JobRow>("JobRow")({
   lastError: Schema.NullOr(Schema.String)
 }) {}
 
-export interface EnqueueInput {
+interface EnqueueInput {
   readonly kind: string
   readonly payload: unknown
   /** Same key twice enqueues once (P23). */
@@ -32,9 +32,9 @@ export interface EnqueueInput {
   readonly maxAttempts?: number | undefined
 }
 
-export type RetryOutcome = "retrying" | "dead" | "lost"
+type RetryOutcome = "retrying" | "dead" | "lost"
 
-export interface SweepResult {
+interface SweepResult {
   readonly requeued: number
   /** Jobs that ran out of attempts; the worker runs their onDead hook. */
   readonly buried: ReadonlyArray<JobRow>

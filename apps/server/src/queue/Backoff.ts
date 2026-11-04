@@ -1,11 +1,11 @@
 import { Duration } from "effect"
 
-export interface BackoffPolicy {
+interface BackoffPolicy {
   readonly base: Duration.Duration
   readonly cap: Duration.Duration
 }
 
-export const defaultBackoff: BackoffPolicy = { base: Duration.seconds(2), cap: Duration.minutes(5) }
+const defaultBackoff: BackoffPolicy = { base: Duration.seconds(2), cap: Duration.minutes(5) }
 
 /**
  * Delay before retry number `attempt` (1-based): full jitter over an

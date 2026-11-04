@@ -8,11 +8,11 @@ import { ModelClient, type ModelError, type ModelResponse } from "../model/Model
 import { SimulatedModel } from "../model/SimulatedModel.ts"
 import { loadPrompt, type PromptTemplate, render } from "./Prompts.ts"
 
-export const GRADE_PROMPT = "grade.v2"
+const GRADE_PROMPT = "grade.v2"
 /** Upper bound for the budget guard; real cheap-tier grades cost ~$0.0003 (D-30). */
 const MAX_COST_PER_CALL_USD = 0.02
 
-export interface GradeInput {
+interface GradeInput {
   readonly problem: { readonly prompt: string; readonly answerKey: string | null }
   readonly rubric: Rubric
   readonly imagePng: Uint8Array
@@ -47,7 +47,7 @@ export class InvalidModelOutput extends Schema.TaggedError<InvalidModelOutput>()
 const structured = OpenAiStructuredOutput.toCodecOpenAI(GradeOutput)
 const decodeOutput = Schema.decodeUnknownEffect(structured.codec)
 
-export const formatCriteria = (rubric: Rubric) => rubric.items.map((i) => `- ${i.id}: ${i.description}`).join("\n")
+const formatCriteria = (rubric: Rubric) => rubric.items.map((i) => `- ${i.id}: ${i.description}`).join("\n")
 
 export class Grader extends Context.Service<Grader, {
   readonly grade: (input: GradeInput) => Effect.Effect<GradeResult, InvalidModelOutput | ModelError>

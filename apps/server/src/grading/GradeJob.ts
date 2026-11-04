@@ -110,7 +110,7 @@ export const makeGradeHandler = Effect.gen(function*() {
 })
 
 /** Maps a provider failure to the queue's retry decision (P24, P25). */
-export const failureFor = (error: ModelError): Effect.Effect<never, JobFailure> =>
+const failureFor = (error: ModelError): Effect.Effect<never, JobFailure> =>
   Effect.fail(
     error.kind === "budget_guard"
       ? new JobFailure({ message: error.message, retryAfter: BUDGET_RETRY })

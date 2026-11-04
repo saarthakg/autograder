@@ -32,7 +32,7 @@ export const splitStatements = (text: string): ReadonlyArray<string> => {
  * ordering, locking and the migrations table (D-26). Each file runs in the
  * migrator's transaction.
  */
-export const sqlFileLoader = (directory: string) =>
+const sqlFileLoader = (directory: string) =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path

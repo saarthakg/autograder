@@ -8,7 +8,7 @@ import { AdminHandlers } from "./AdminHandlers.ts"
 import { LoadTestHandlers } from "./LoadTestHandlers.ts"
 import { ProductHandlers } from "./ProductHandlers.ts"
 
-export const SystemHandlers = HttpApiBuilder.group(
+const SystemHandlers = HttpApiBuilder.group(
   Api,
   "system",
   Effect.fn(function*(handlers) {
