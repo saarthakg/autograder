@@ -1,4 +1,4 @@
-import { type AssignmentDetail, type ProblemView, type Report, Rubric, RubricItem, type SubmissionDetail } from "@autograder/domain"
+import { type AssignmentDetail, type ProblemView, type Report, Rubric, RubricItem, type StudentView, type SubmissionDetail } from "@autograder/domain"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { call, friendly } from "../api.ts"
 import { MathText } from "../components/Math.tsx"
@@ -261,8 +261,8 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
     const r = await call(t, (c) => fn === "close" ? c.teacher.close({ params: { id: props.a.id } }) : c.teacher.publish({ params: { id: props.a.id } }))
     if (r.ok) props.onChange(r.value)
   }
-  const setShow = async (show: boolean) => {
-    const r = await call(t, (c) => c.teacher.setShowCriteria({ params: { id: props.a.id }, payload: { showCriteria: show } }))
+  const setView = async (studentView: StudentView) => {
+    const r = await call(t, (c) => c.teacher.setStudentView({ params: { id: props.a.id }, payload: { studentView } }))
     if (r.ok) props.onChange(r.value)
   }
 
@@ -356,12 +356,20 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
         ))}
       </section>
 
+      <section className="settings-row">
+        <label className="field inline">
+          <span>After grading, students see</span>
+          <select value={props.a.studentView} onChange={(e) => setView(e.target.value as StudentView)}>
+            <option value="score">Their score only</option>
+            <option value="met">Score + what they did well</option>
+            <option value="met_not_yet">Score + what they did well + "Not yet"</option>
+          </select>
+        </label>
+        <span className="muted small">Never the answer, and never red ink.</span>
+      </section>
+
       <section className="actions-bar">
         <button onClick={() => downloadCsv(report)}>Export CSV for your gradebook</button>
-        <label className="toggle">
-          <input type="checkbox" checked={props.a.showCriteria} onChange={(e) => setShow(e.target.checked)} />
-          Show students which criteria they met
-        </label>
         {props.a.status === "open"
           ? <button onClick={() => toggle("close")}>Close assignment</button>
           : <button onClick={() => toggle("publish")}>Reopen</button>}

@@ -27,6 +27,14 @@ Status values:
 - **Status:** Accepted. Decided without Alp, using the reading above.
   - The brief turns off *real-time feedback*, meaning tutoring-style hints. Labels for met criteria are task-framed affirmation, not hints.
   - If Goblins reads it more strictly, `showCriteriaToStudents=false` gives score only. That's one setting, not a redesign.
+- **Amendment (Saarthak, 2026-11-04), after the outsider UI review:** the on/off toggle becomes a three-way teacher setting, `student_view`:
+  - **score only**, which is (a)
+  - **score + met criteria**, which is (b) and stays the default
+  - **score + met + "Not yet"**, a gentle (c)
+  - **Wording:** unmet criteria read "Not yet", in neutral ink, never red, and still never the answer or an explanation.
+  - **The score moment:** after submitting, the student stays on the problem and sees their own drawing beside "Grading…", which becomes the score in place. "Next problem →" works immediately (P8), so nobody waits on the grader.
+  - **Why:** the reviewer found students "never see what they missed". Whether that's a hint or useful feedback is the teacher's classroom call, so it's their setting, not ours.
+  - Migration 0006 keeps the old `show_criteria` column (expand-only) and maps `false` to score only.
 
 ### D-02 ★ One attempt per problem
 - **Context:** The brief doesn't say whether students can resubmit.

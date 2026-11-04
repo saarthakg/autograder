@@ -9,6 +9,7 @@ import {
   type ProblemInput,
   ProblemStat,
   ProblemView,
+  type StudentView,
   Report,
   ReportCell,
   ReportStudent,
@@ -75,8 +76,8 @@ const make = Effect.gen(function*() {
       WHERE p.assignment_id = ${assignmentId} ORDER BY p.position`
 
   const owned = Effect.fn("Teachers.owned")(function*(teacherId: string, assignmentId: string) {
-    const rows = yield* sql<{ id: string; title: string; status: "draft" | "open" | "closed"; classCode: string | null; shareSlug: string | null; showCriteria: boolean }>`
-      SELECT id, title, status, class_code AS "classCode", share_slug AS "shareSlug", show_criteria AS "showCriteria"
+    const rows = yield* sql<{ id: string; title: string; status: "draft" | "open" | "closed"; classCode: string | null; shareSlug: string | null; studentView: StudentView }>`
+      SELECT id, title, status, class_code AS "classCode", share_slug AS "shareSlug", student_view AS "studentView"
       FROM assignment WHERE id::text = ${assignmentId} AND teacher_id = ${teacherId}`
     const a = rows[0]
     if (a === undefined) return yield* new NotFound({ message: "assignment not found" })
@@ -199,9 +200,9 @@ const make = Effect.gen(function*() {
     return yield* detail(teacherId, a.id)
   })
 
-  const setShowCriteria = Effect.fn("Teachers.setShowCriteria")(function*(teacherId: string, assignmentId: string, show: boolean) {
+  const setStudentView = Effect.fn("Teachers.setStudentView")(function*(teacherId: string, assignmentId: string, view: StudentView) {
     const a = yield* owned(teacherId, assignmentId)
-    yield* sql`UPDATE assignment SET show_criteria = ${show} WHERE id = ${a.id}`
+    yield* sql`UPDATE assignment SET student_view = ${view} WHERE id = ${a.id}`
     return yield* detail(teacherId, a.id)
   })
 
@@ -415,7 +416,7 @@ const make = Effect.gen(function*() {
   })
 
   return {
-    list, create, createSample, detail, saveRubric, publish, close, setShowCriteria, share,
+    list, create, createSample, detail, saveRubric, publish, close, setStudentView, share,
     templateBySlug, copyTemplate, report, submissionDetail, override
   }
 })

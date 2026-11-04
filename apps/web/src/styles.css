@@ -144,8 +144,6 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--warn); }
 .actions-bar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-top: 1.5rem; }
-.toggle { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; }
-.toggle input { width: 1.2rem; min-height: 1.2rem; }
 
 /* Submission drawer */
 .drawer-backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 0.3); display: flex; justify-content: flex-end; z-index: 10; }
@@ -185,6 +183,16 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .submitted { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem 1.2rem; font-size: 1.05rem; }
 .submitted .score { font-size: 2rem; font-weight: 800; margin: 0; }
 .met { list-style: none; padding: 0; margin: 0.4rem 0 0; color: var(--ok); }
+.score-moment { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: flex-start; margin-bottom: 1rem; }
+.score-moment .stroke-view { border: 1px solid var(--line); border-radius: 8px; max-width: 100%; }
+.score-side { flex: 1 1 14rem; }
+.submitted-label { font-weight: 700; margin: 0 0 0.2rem; }
+/* "Not yet" in neutral ink, never red (D-01). */
+.not-yet { margin-top: 0.6rem; color: var(--muted); }
+.not-yet ul { list-style: none; padding: 0; margin: 0.2rem 0 0; }
+.not-yet li::before { content: "○ "; }
+.settings-row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; margin-top: 1.5rem; padding: 0.8rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.field.inline { flex-direction: row; align-items: center; gap: 0.6rem; margin: 0; }
 .completion { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; text-align: center; }
 .completion .summary { list-style: none; padding: 0; margin: 1rem 0; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 .template-problems li { margin: 0.4rem 0; }

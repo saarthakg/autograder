@@ -41,7 +41,7 @@ export const TeacherHandlers = HttpApiBuilder.group(Api, "teacher", Effect.fn(fu
     saveRubric: ({ params, payload }) => asTeacher((me) => t.saveRubric(me, params.id, payload)),
     publish: ({ params }) => asTeacher((me) => t.publish(me, params.id)),
     close: ({ params }) => asTeacher((me) => t.close(me, params.id)),
-    setShowCriteria: ({ params, payload }) => asTeacher((me) => t.setShowCriteria(me, params.id, payload.showCriteria)),
+    setStudentView: ({ params, payload }) => asTeacher((me) => t.setStudentView(me, params.id, payload.studentView)),
     report: ({ params }) => asTeacher((me) => t.report(me, params.id)),
     getSubmission: ({ params }) => asTeacher((me) => t.submissionDetail(me, params.id)),
     override: ({ params, payload }) => asTeacher((me) => t.override(me, params.id, params.criterionId, payload.met)),

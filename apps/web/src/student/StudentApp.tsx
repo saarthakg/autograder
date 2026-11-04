@@ -1,8 +1,9 @@
-import { Stroke, type StudentHome, type StudentProblem } from "@autograder/domain"
+import { Stroke, StudentHome, StudentProblem } from "@autograder/domain"
 import { Schema } from "effect"
 import { useCallback, useEffect, useState } from "react"
 import { call, friendly } from "../api.ts"
 import { MathText } from "../components/Math.tsx"
+import { StrokeView } from "../components/StrokeView.tsx"
 import { navigate } from "../lib/router.ts"
 import { drafts, drawingKey, type StudentSession, studentSession } from "../lib/storage.ts"
 import { usePoll } from "../lib/usePoll.ts"
@@ -13,7 +14,8 @@ const GOBLINS_URL = "https://goblinsapp.com"
 
 /**
  * The student's assignment. Submit never waits on the grader (P8): it returns
- * at once, the student moves on, and the score fills in on that problem's chip.
+ * at once and "Next problem" works immediately. If the student stays, the
+ * score fills in next to their work; it also appears on that problem's chip.
  */
 export function StudentApp() {
   const [session] = useState<StudentSession | null>(() => studentSession.read())
@@ -71,17 +73,30 @@ export function StudentApp() {
             studentId={home.studentId}
             problem={problem}
             closed={home.status !== "open"}
-            onSubmitted={() => {
-              // Move on immediately; the score arrives on the chip (P8).
+            onSubmitted={(strokes) => {
+              // Show "Grading…" at once (no flash of the old state), then fetch the real state.
+              setHome((h) => h && markSubmitted(h, problem.id, strokes))
+              refresh()
+            }}
+            onNext={() => {
               const next = home.problems.findIndex((p, i) => i > current && p.submission === null)
               const firstOpen = home.problems.findIndex((p, i) => i !== current && p.submission === null)
               setCurrent(next >= 0 ? next : firstOpen >= 0 ? firstOpen : home.problems.length)
-              refresh()
             }}
+            hasNext={home.problems.some((p, i) => i !== current && p.submission === null)}
           />}
     </main>
   )
 }
+
+/** Optimistic local state right after a submit: the server's answer replaces it a moment later. */
+const markSubmitted = (h: StudentHome, problemId: string, strokes: ReadonlyArray<Stroke>): StudentHome =>
+  new StudentHome({
+    ...h,
+    problems: h.problems.map((p) =>
+      p.id !== problemId || p.submission !== null ? p : new StudentProblem({ ...p, submission: { state: "grading", score: null, metLabels: [], notYetLabels: [], strokes } })
+    )
+  })
 
 const chipClass = (p: StudentProblem) => p.submission === null ? "todo" : p.submission.state
 const chipLabel = (p: StudentProblem) =>
@@ -95,7 +110,15 @@ const decodeDraft = (raw: unknown) => {
   return r._tag === "Some" ? r.value : null
 }
 
-function ProblemScreen(props: { readonly token: string; readonly studentId: string; readonly problem: StudentProblem; readonly closed: boolean; readonly onSubmitted: () => void }) {
+function ProblemScreen(props: {
+  readonly token: string
+  readonly studentId: string
+  readonly problem: StudentProblem
+  readonly closed: boolean
+  readonly onSubmitted: (strokes: ReadonlyArray<Stroke>) => void
+  readonly onNext: () => void
+  readonly hasNext: boolean
+}) {
   const p = props.problem
   // Restore unsubmitted work for THIS student and problem (refresh, tab switch).
   const [initial] = useState(() => drafts.read(props.studentId, p.id, decodeDraft) ?? [])
@@ -115,7 +138,7 @@ function ProblemScreen(props: { readonly token: string; readonly studentId: stri
       payload: { problemId: p.id, idempotencyKey: drawingKey(props.studentId, p.id), strokes, imagePng: png }
     }))
     setBusy(false)
-    if (r.ok || r.tag === "AlreadySubmitted") { drafts.clear(props.studentId, p.id); props.onSubmitted() }
+    if (r.ok || r.tag === "AlreadySubmitted") { drafts.clear(props.studentId, p.id); props.onSubmitted(strokes) }
     else setError(r.tag === "HttpClientError" ? "Couldn't send it. Check your connection and press Submit again. Your drawing is still here." : friendly(r))
   }
 
@@ -123,13 +146,13 @@ function ProblemScreen(props: { readonly token: string; readonly studentId: stri
     <section className="problem-screen">
       <h2 className="problem-text"><span className="muted">Problem {p.position}.</span> <MathText text={p.prompt} /></h2>
       {p.submission !== null ? (
-        <Submitted problem={p} />
+        <Submitted problem={p} onNext={props.onNext} hasNext={props.hasNext} />
       ) : (
         <>
           <Whiteboard height={360} initial={initial} onChange={onChange} />
           <div className="actions">
             <button className="primary big" disabled={strokes.length === 0 || busy || props.closed} onClick={submit}>
-              {busy ? "Sending…" : "Submit and continue →"}
+              {busy ? "Sending…" : "Submit"}
             </button>
             <span className="muted small">Show your work. You get one try per problem.</span>
           </div>
@@ -141,15 +164,32 @@ function ProblemScreen(props: { readonly token: string; readonly studentId: stri
   )
 }
 
-/** Task-framed, never ego-framed (D-01, Butler): what the work did, not a rank. */
-function Submitted(props: { readonly problem: StudentProblem }) {
+/**
+ * The score moment: the student's own work beside its score. Task-framed,
+ * never ego-framed (D-01, Butler): what the work did, not a rank, and "Not
+ * yet" in neutral ink, never red. "Next" never waits on the grader (P8).
+ */
+function Submitted(props: { readonly problem: StudentProblem; readonly onNext: () => void; readonly hasNext: boolean }) {
   const s = props.problem.submission!
-  if (s.state === "grading") return <p className="submitted">Submitted ✓. Checking your work… Keep going, your score will appear here.</p>
-  if (s.state === "teacher_check") return <p className="submitted">Submitted ✓. Your teacher will check this one.</p>
   return (
     <div className="submitted">
-      <p className="score">{s.score} / {props.problem.maxPoints}</p>
-      {s.metLabels.length > 0 && <ul className="met">{s.metLabels.map((l) => <li key={l}>✓ {l}</li>)}</ul>}
+      <div className="score-moment">
+        <StrokeView strokes={s.strokes} width={320} height={180} />
+        <div className="score-side" aria-live="polite">
+          {s.state === "grading" && <><p className="submitted-label">Submitted ✓</p><p className="muted">Grading…</p></>}
+          {s.state === "teacher_check" && <><p className="submitted-label">Submitted ✓</p><p>Your teacher will check this one.</p></>}
+          {s.state === "graded" && (
+            <>
+              <p className="score">{s.score} / {props.problem.maxPoints}</p>
+              {s.metLabels.length > 0 && <ul className="met">{s.metLabels.map((l) => <li key={l}>✓ {l}</li>)}</ul>}
+              {s.notYetLabels.length > 0 && (
+                <div className="not-yet"><span>Not yet:</span><ul>{s.notYetLabels.map((l) => <li key={l}>{l}</li>)}</ul></div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      <button className="primary big" onClick={props.onNext}>{props.hasNext ? "Next problem →" : "Finish →"}</button>
     </div>
   )
 }

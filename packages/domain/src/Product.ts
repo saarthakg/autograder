@@ -93,13 +93,17 @@ export class AssignmentSummary extends Schema.Class<AssignmentSummary>("Assignme
   createdAt: Schema.DateTimeUtcFromString
 }) {}
 
+/** What a student sees once a problem is graded (D-01): never red ink, never the answer. */
+export const StudentView = Schema.Literals(["score", "met", "met_not_yet"])
+export type StudentView = typeof StudentView.Type
+
 export class AssignmentDetail extends Schema.Class<AssignmentDetail>("AssignmentDetail")({
   id: Schema.String,
   title: Schema.String,
   status: AssignmentStatus,
   classCode: Schema.NullOr(Schema.String),
   shareSlug: Schema.NullOr(Schema.String),
-  showCriteria: Schema.Boolean,
+  studentView: StudentView,
   problems: Schema.Array(ProblemView),
   /** Problems whose rubric couldn't be drafted; the teacher starts from a template (D-08). */
   rubricFallbacks: Schema.Array(Schema.String)
@@ -235,9 +239,9 @@ export class TeacherApi extends HttpApiGroup.make("teacher")
     }),
     HttpApiEndpoint.post("publish", "/assignments/:id/publish", { params: id, success: AssignmentDetail, error: NotFound }),
     HttpApiEndpoint.post("close", "/assignments/:id/close", { params: id, success: AssignmentDetail, error: NotFound }),
-    HttpApiEndpoint.put("setShowCriteria", "/assignments/:id/show-criteria", {
+    HttpApiEndpoint.put("setStudentView", "/assignments/:id/student-view", {
       params: id,
-      payload: Schema.Struct({ showCriteria: Schema.Boolean }),
+      payload: Schema.Struct({ studentView: StudentView }),
       success: AssignmentDetail,
       error: NotFound
     }),
@@ -287,8 +291,12 @@ export class StudentProblem extends Schema.Class<StudentProblem>("StudentProblem
   submission: Schema.NullOr(Schema.Struct({
     state: StudentSubmissionState,
     score: Schema.NullOr(Schema.Int),
-    /** Labels of met criteria, task-framed (D-01). Empty when the teacher turned this off. */
-    metLabels: Schema.Array(Schema.String)
+    /** Labels of met criteria, task-framed (D-01). Empty when the teacher shows score only. */
+    metLabels: Schema.Array(Schema.String),
+    /** Labels of criteria not met yet; only when the teacher chose "met + Not yet" (D-01). */
+    notYetLabels: Schema.Array(Schema.String),
+    /** The student's own work, so the score sits next to what they drew. */
+    strokes: Strokes
   }))
 }) {}
 

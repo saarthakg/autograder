@@ -1,4 +1,4 @@
-import { AssignmentNotOpen, InvalidRequest, NotFound, Rubric, StudentHome, StudentProblem, type Strokes } from "@autograder/domain"
+import { AssignmentNotOpen, InvalidRequest, NotFound, Rubric, StudentHome, StudentProblem, type StudentView, Strokes } from "@autograder/domain"
 import { Context, Effect, Layer, Schema } from "effect"
 import { SqlClient } from "effect/sql"
 import { Submissions } from "../grading/Submissions.ts"
@@ -6,6 +6,7 @@ import { newSecret, normaliseCode, sha256, shortCode } from "./Codes.ts"
 import { effective, type StoredVerdict, studentState, type SubmissionStatus } from "./Scoring.ts"
 
 const decodeRubric = Schema.decodeUnknownSync(Rubric)
+const decodeStrokes = Schema.decodeUnknownSync(Strokes)
 
 /**
  * Student flows (P2, P8): join with a class code and a name, rejoin from any
@@ -63,16 +64,16 @@ const make = Effect.gen(function*() {
     )
 
   const home = Effect.fn("Students.home")(function*(studentId: string) {
-    const [me] = yield* sql<{ displayName: string; rejoinCode: string; title: string; status: "draft" | "open" | "closed"; classCode: string; showCriteria: boolean; assignmentId: string }>`
+    const [me] = yield* sql<{ displayName: string; rejoinCode: string; title: string; status: "draft" | "open" | "closed"; classCode: string; studentView: StudentView; assignmentId: string }>`
       SELECT s.display_name AS "displayName", s.rejoin_code AS "rejoinCode", a.title, a.status, a.class_code AS "classCode",
-             a.show_criteria AS "showCriteria", a.id AS "assignmentId"
+             a.student_view AS "studentView", a.id AS "assignmentId"
       FROM student s JOIN assignment a ON a.id = s.assignment_id WHERE s.id = ${studentId}`
     const problems = yield* sql<{ id: string; position: number; prompt: string; maxPoints: number; items: unknown; referenceSolution: string }>`
       SELECT p.id, p.position, p.prompt_md AS prompt, p.max_points AS "maxPoints", r.items, r.reference_solution AS "referenceSolution"
       FROM problem p JOIN rubric r ON r.problem_id = p.id AND r.version = p.current_rubric_version
       WHERE p.assignment_id = ${me!.assignmentId} ORDER BY p.position`
-    const subs = yield* sql<{ problemId: string; status: SubmissionStatus; verdicts: ReadonlyArray<StoredVerdict> | null; gradedItems: unknown; overrides: Record<string, boolean> | null }>`
-      SELECT s.problem_id AS "problemId", s.status, g.verdicts, gr.items AS "gradedItems",
+    const subs = yield* sql<{ problemId: string; status: SubmissionStatus; strokes: unknown; verdicts: ReadonlyArray<StoredVerdict> | null; gradedItems: unknown; overrides: Record<string, boolean> | null }>`
+      SELECT s.problem_id AS "problemId", s.status, s.strokes, g.verdicts, gr.items AS "gradedItems",
              (SELECT jsonb_object_agg(o.criterion_id, o.met) FROM override o WHERE o.submission_id = s.id) AS overrides
       FROM submission s
       LEFT JOIN LATERAL (SELECT * FROM grade WHERE submission_id = s.id ORDER BY rubric_version DESC LIMIT 1) g ON true
@@ -91,6 +92,8 @@ const make = Effect.gen(function*() {
         const rubric = decodeRubric({ items: s.gradedItems ?? p.items, referenceSolution: p.referenceSolution })
         const eff = effective(rubric.items, s.verdicts, s.overrides ?? {})
         const state = studentState(s.status, eff)
+        const view = me!.studentView
+        const labels = (met: boolean) => state === "graded" ? rubric.items.filter((i) => eff.met.get(i.id) === met).map((i) => i.label) : []
         return new StudentProblem({
           id: p.id,
           position: p.position,
@@ -99,8 +102,10 @@ const make = Effect.gen(function*() {
           submission: {
             state,
             score: state === "graded" ? eff.score : null,
-            // D-01: only MET criteria, task-framed; never what was missed.
-            metLabels: state === "graded" && me!.showCriteria ? rubric.items.filter((i) => eff.met.get(i.id) === true).map((i) => i.label) : []
+            // D-01: task-framed labels; "Not yet" only when the teacher opts in.
+            metLabels: view === "score" ? [] : labels(true),
+            notYetLabels: view === "met_not_yet" ? labels(false) : [],
+            strokes: decodeStrokes(s.strokes)
           }
         })
       })

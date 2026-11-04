@@ -154,14 +154,28 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.deepStrictEqual([summary!.gradedCount, summary!.reviewCount], [1, 0])
       }))
 
-    it.effect("teacher can hide criteria from students (D-01 toggle)", () =>
+    it.effect("the teacher picks what students see: score only, met (default), or met + Not yet (D-01)", () =>
       Effect.gen(function*() {
         const { teacher, student, assignment } = yield* classroom
-        yield* teacher.teacher.setShowCriteria({ params: { id: assignment.id }, payload: { showCriteria: false } })
-        const accepted = yield* student.student.submit({ payload: { problemId: assignment.problems[0]!.id, idempotencyKey: "hide-criteria-1", strokes: STROKES, imagePng: PNG } })
-        yield* gradeDirectly(accepted.id, [true, true, true])
-        const sub = (yield* student.student.home()).problems[0]!.submission!
-        assert.deepStrictEqual([sub.score, sub.metLabels], [4, []])
+        const p1 = assignment.problems[0]!
+        const [l1, l2, l3] = p1.rubric.items.map((i) => i.label)
+        assert.strictEqual(assignment.studentView, "met")
+        const accepted = yield* student.student.submit({ payload: { problemId: p1.id, idempotencyKey: "student-view-1", strokes: STROKES, imagePng: PNG } })
+        yield* gradeDirectly(accepted.id, [true, false, true])
+        const seen = Effect.map(student.student.home(), (h) => h.problems[0]!.submission!)
+
+        let sub = yield* seen
+        assert.deepStrictEqual([sub.score, sub.metLabels, sub.notYetLabels], [3, [l1, l3], []])
+        assert.strictEqual(sub.strokes.length, STROKES.length) // their own work comes back with the score
+
+        yield* teacher.teacher.setStudentView({ params: { id: assignment.id }, payload: { studentView: "met_not_yet" } })
+        sub = yield* seen
+        assert.deepStrictEqual([sub.metLabels, sub.notYetLabels], [[l1, l3], [l2]])
+
+        const updated = yield* teacher.teacher.setStudentView({ params: { id: assignment.id }, payload: { studentView: "score" } })
+        assert.strictEqual(updated.studentView, "score")
+        sub = yield* seen
+        assert.deepStrictEqual([sub.score, sub.metLabels, sub.notYetLabels], [3, [], []])
       }))
   })
 
