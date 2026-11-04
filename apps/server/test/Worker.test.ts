@@ -65,13 +65,18 @@ describe("Worker (real Postgres)", () => {
       yield* startWorker({
         flaky: () => Effect.suspend(() => {
           calls++
-          // retryAfter 0 + random backoff could be up to 2 s; permanent on the 2nd call keeps the test fast.
-          return Effect.fail(new JobFailure({ message: `fail ${calls}`, permanent: calls >= 2 }))
+          // Fail only after the loop has gone idle, as a real model call does. The loop then
+          // sleeps toward this job's 30 s lease expiry, and the retry must ring it awake.
+          // First-retry backoff is at most 2 s; permanent on the 2nd call keeps the test fast.
+          return Effect.sleep(Duration.millis(200)).pipe(
+            Effect.andThen(Effect.fail(new JobFailure({ message: `fail ${calls}`, permanent: calls >= 2 })))
+          )
         })
       })
       const { id } = yield* q.enqueue({ kind: "flaky", payload: {}, maxAttempts: 5 })
       yield* wake.ring
-      const dead = yield* waitForStatus(id, "dead", Duration.seconds(5))
+      // Bounded by backoff (≤ 2 s) + two 200 ms calls, never by the lease.
+      const dead = yield* waitForStatus(id, "dead", Duration.seconds(4))
       assert.strictEqual(dead.lastError, "fail 2")
       assert.strictEqual(dead.attempts, 2)
     }).pipe(Effect.scoped, Effect.provide(base)))

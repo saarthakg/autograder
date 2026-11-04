@@ -71,6 +71,9 @@ export const WorkerLive = Layer.effectDiscard(
             ...Option.match(failure, { onNone: () => ({}), onSome: (e) => (e.retryAfter ? { retryAfter: e.retryAfter } : {}) })
           })
         const outcome = yield* queue.retryOrBury(job, message, delay, { permanent })
+        // The idle loop may have chosen its sleep while this job was still running (until its
+        // lease expiry, ~30 s). Ring so it recomputes and the retry runs after its backoff.
+        if (outcome === "retrying") yield* wake.ring
         yield* Effect.logWarning(`job failed: ${message}`).pipe(Effect.annotateLogs({ outcome, attempt: job.attempts }))
         if (outcome === "dead" && handler.onDead) yield* handler.onDead(job, message)
       }).pipe(
