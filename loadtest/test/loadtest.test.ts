@@ -13,7 +13,7 @@ describe("timeline (P30)", () => {
     expect(classesToRun(fast)).toBe(10)
     const realPeak = peakRate(buildTimeline(real), real.speed)
     const fastPeak = peakRate(buildTimeline(fast), fast.speed)
-    // PLAN §8 sizing: about 5 submits/s at testing-day peak; the compressed run lands near it.
+    // D-22 sizing: about 7 submits/s at testing-day peak; the compressed run lands near it.
     expect(realPeak).toBeGreaterThan(3)
     expect(realPeak).toBeLessThan(9)
     expect(Math.abs(fastPeak - realPeak) / realPeak).toBeLessThan(0.35)
