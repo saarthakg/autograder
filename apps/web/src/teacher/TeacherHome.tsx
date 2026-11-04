@@ -48,7 +48,7 @@ export function TeacherHome(props: { readonly secret: string }) {
               <span className="card-title">{a.title}</span>
               <span className={`pill ${a.status}`}>{a.status === "open" ? `Open · ${a.classCode}` : a.status}</span>
               <span className="muted">
-                {a.problemCount} problems · {a.studentCount} students · {a.gradedCount} graded
+                {plural(a.problemCount, "problem")} · {plural(a.studentCount, "student")} · {a.gradedCount} graded
                 {a.reviewCount > 0 ? ` · ${a.reviewCount} to check` : ""}
               </span>
             </button>
@@ -74,3 +74,5 @@ export function WorkspaceLink(props: { readonly secret: string }) {
     </aside>
   )
 }
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
