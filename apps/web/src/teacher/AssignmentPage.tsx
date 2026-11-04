@@ -329,12 +329,17 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
                       )}
                     </td>
                   ))}
-                  <td className="total">{s.total}<span className="muted small">/{s.maxPossible}</span></td>
+                  <td className="total">
+                    {s.total}<span className="muted small">/{s.maxPossible}</span>
+                    <TotalNote cells={s.cells} />
+                  </td>
                 </tr>
               ))}
               <tr className="averages">
                 <th scope="row">Class average</th>
-                {report.problems.map((p) => <td key={p.id}>{p.average === null ? "–" : p.average.toFixed(1)}</td>)}
+                {report.problems.map((p) => (
+                  <td key={p.id}>{p.average === null ? "–" : <>{p.average.toFixed(1)}<span className="muted small"> · n={p.graded}</span></>}</td>
+                ))}
                 <td />
               </tr>
             </tbody>
@@ -392,6 +397,14 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
       {open && <SubmissionDrawer secret={props.secret} id={open} onClose={() => { setOpen(null); refresh() }} />}
     </div>
   )
+}
+
+/** A total isn't final while work is missing or still being scored: say so next to it. */
+function TotalNote(props: { readonly cells: Report["students"][number]["cells"] }) {
+  const notDone = props.cells.filter((c) => c.status === "not_started").length
+  const pending = props.cells.filter((c) => c.status === "grading" || c.status === "needs_review").length
+  const parts = [notDone > 0 ? `${notDone} not done` : null, pending > 0 ? `${pending} pending` : null].filter((x) => x !== null)
+  return parts.length === 0 ? null : <span className="total-note">{parts.join(" · ")}</span>
 }
 
 const REASON: Record<string, string> = {

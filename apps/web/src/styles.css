@@ -195,6 +195,7 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .not-yet { margin-top: 0.6rem; color: var(--muted); }
 .not-yet ul { list-style: none; padding: 0; margin: 0.2rem 0 0; }
 .not-yet li::before { content: "○ "; }
+.total-note { display: block; font-size: 0.75rem; font-weight: 400; color: var(--warn); }
 .hint { color: var(--warn); margin: 0.4rem 0 0; text-align: right; }
 .empty-state { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: 1.2rem; margin: 1rem 0; }
 .empty-state p { margin-top: 0; }
