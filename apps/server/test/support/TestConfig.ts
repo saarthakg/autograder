@@ -33,6 +33,7 @@ export const testConfig = (
         concurrency: 4,
         maxInFlightGlobal: 100,
         lease: Duration.seconds(30),
+        heartbeat: Duration.seconds(10),
         idlePoll: Duration.minutes(60),
         shutdownGrace: Duration.millis(200),
         ...overrides

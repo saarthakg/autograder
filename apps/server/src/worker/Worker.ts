@@ -47,7 +47,15 @@ export const WorkerLive = Layer.effectDiscard(
           yield* queue.retryOrBury(job, `no handler for kind "${job.kind}"`, Duration.zero, { permanent: true })
           return
         }
-        const result = yield* Effect.exit(handler.run(job))
+        // Renew the lease while the handler runs; if it was lost, stop renewing (the job belongs to someone else now).
+        const renew = Effect.gen(function*() {
+          while (true) {
+            yield* Effect.sleep(config.worker.heartbeat)
+            if (!(yield* queue.extendLease(job, config.worker.lease))) return
+          }
+        }).pipe(Effect.catch((e) => Effect.logWarning("lease heartbeat failed; the lease may expire", e)))
+        // raceFirst: the handler's outcome (success OR failure) wins; the renewer never completes on its own.
+        const result = yield* Effect.exit(Effect.raceFirst(handler.run(job), Effect.andThen(renew, Effect.never)))
         if (result._tag === "Success") {
           const completed = yield* queue.complete(job)
           if (!completed) yield* Effect.logWarning("job finished after its lease was lost; result discarded")

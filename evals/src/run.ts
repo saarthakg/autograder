@@ -92,6 +92,7 @@ const EvalConfig = Layer.effect(
         concurrency: 1,
         maxInFlightGlobal: 1,
         lease: Duration.seconds(60),
+        heartbeat: Duration.seconds(20),
         idlePoll: Duration.minutes(60),
         shutdownGrace: Duration.seconds(1)
       }

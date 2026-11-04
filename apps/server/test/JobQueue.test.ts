@@ -84,6 +84,27 @@ layer(JobQueue.layer.pipe(Layer.provideMerge(TestDb)), { excludeTestServices: tr
         assert.strictEqual(row.status, "done")
       }))
 
+    it.effect("the heartbeat keeps a working job's lease, and is fenced once the lease was lost", () =>
+      Effect.gen(function*() {
+        yield* truncateJobs
+        const q = yield* JobQueue
+        yield* q.enqueue({ kind: "echo", payload: {} })
+        const job = Option.getOrThrow(yield* q.claim({ lease: Duration.millis(200), maxInFlightGlobal: 100 }))
+        yield* Effect.sleep(Duration.millis(120))
+        assert.isTrue(yield* q.extendLease(job, Duration.seconds(30)))
+        yield* Effect.sleep(Duration.millis(150)) // past the original lease
+        assert.strictEqual((yield* q.sweepExpired).requeued, 0) // renewed, so not swept
+        // A lost lease: swept and re-claimed by someone else; the old holder's heartbeat now fails.
+        const stale = Option.getOrThrow(yield* q.claim({ lease: Duration.millis(10), maxInFlightGlobal: 100 }).pipe(
+          Effect.andThen(() => q.enqueue({ kind: "echo", payload: {} })),
+          Effect.andThen(() => q.claim({ lease: Duration.millis(10), maxInFlightGlobal: 100 }))
+        ))
+        yield* Effect.sleep(Duration.millis(50))
+        yield* q.sweepExpired
+        Option.getOrThrow(yield* q.claim(claimOpts))
+        assert.isFalse(yield* q.extendLease(stale, Duration.seconds(30)))
+      }))
+
     it.effect("retries with a delay, then buries after max attempts", () =>
       Effect.gen(function*() {
         yield* truncateJobs

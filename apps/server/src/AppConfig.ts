@@ -43,6 +43,8 @@ export class AppConfig extends Context.Service<AppConfig, {
     readonly concurrency: number
     readonly maxInFlightGlobal: number
     readonly lease: Duration.Duration
+    /** How often a running job renews its lease. */
+    readonly heartbeat: Duration.Duration
     /** Longest the idle worker sleeps without a wake; long so Neon can scale to zero (D-20 A5). */
     readonly idlePoll: Duration.Duration
     /** How long in-flight jobs get after SIGTERM before we rely on leases (Cloud Run allows ~10 s). */
@@ -74,7 +76,10 @@ export class AppConfig extends Context.Service<AppConfig, {
       const budgetFloorUsd = yield* Config.Finite("BUDGET_FLOOR_USD").pipe(Config.withDefault(5))
       const concurrency = yield* Config.Int("MODEL_CONCURRENCY").pipe(Config.withDefault(32))
       const maxInFlightGlobal = yield* Config.Int("MODEL_MAX_IN_FLIGHT").pipe(Config.withDefault(64))
-      const lease = yield* Config.Duration("JOB_LEASE").pipe(Config.withDefault(Duration.seconds(60)))
+      // Short lease + heartbeat: a crashed instance's jobs come back in ≤ 30 s, while a slow
+      // model call that's still running keeps its lease by renewing it every 10 s.
+      const lease = yield* Config.Duration("JOB_LEASE").pipe(Config.withDefault(Duration.seconds(30)))
+      const heartbeat = yield* Config.Duration("JOB_HEARTBEAT").pipe(Config.withDefault(Duration.seconds(10)))
       const idlePoll = yield* Config.Duration("WORKER_IDLE_POLL").pipe(Config.withDefault(Duration.minutes(60)))
       // Defaults fitted to openai/gpt-6-luna in the Phase 2 eval: p50 3.4 s, p95 4.5 s (sigma = ln(4.5/3.4)/1.645).
       // The canary re-measures the real path; LOADTEST.md compares the two.
@@ -114,6 +119,7 @@ export class AppConfig extends Context.Service<AppConfig, {
           concurrency,
           maxInFlightGlobal,
           lease,
+          heartbeat,
           idlePoll,
           shutdownGrace
         }

@@ -52,6 +52,8 @@ export class JobQueue extends Context.Service<JobQueue, {
     readonly maxInFlightGlobal: number
   }) => Effect.Effect<Option.Option<JobRow>, SqlError.SqlError>
   readonly complete: (job: JobRow) => Effect.Effect<boolean, SqlError.SqlError>
+  /** Heartbeat: pushes the lease out while the holder is still working; false once the lease was lost (fenced). */
+  readonly extendLease: (job: JobRow, lease: Duration.Duration) => Effect.Effect<boolean, SqlError.SqlError>
   /** `permanent` buries immediately, for failures that cannot succeed on retry. */
   readonly retryOrBury: (
     job: JobRow,
@@ -123,6 +125,15 @@ export class JobQueue extends Context.Service<JobQueue, {
         return done.length === 1
       })
 
+      const extendLease = Effect.fn("JobQueue.extendLease")(function*(job: JobRow, lease: Duration.Duration) {
+        const extended = yield* sql.unsafe(
+          `UPDATE job SET lease_until = now() + make_interval(secs => $3::double precision)
+           WHERE id = $1 AND status = 'running' AND attempts = $2 RETURNING id`,
+          [job.id, job.attempts, Duration.toSeconds(lease)]
+        )
+        return extended.length === 1
+      })
+
       const retryOrBury = Effect.fn("JobQueue.retryOrBury")(function*(
         job: JobRow,
         error: string,
@@ -169,7 +180,7 @@ export class JobQueue extends Context.Service<JobQueue, {
         return Option.fromNullishOr(found[0])
       })
 
-      return JobQueue.of({ enqueue, claim, complete, retryOrBury, sweepExpired, nextDueAt, get })
+      return JobQueue.of({ enqueue, claim, complete, extendLease, retryOrBury, sweepExpired, nextDueAt, get })
     })
   )
 }
