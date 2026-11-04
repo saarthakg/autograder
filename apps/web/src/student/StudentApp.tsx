@@ -1,9 +1,10 @@
-import type { Stroke, StudentHome, StudentProblem } from "@autograder/domain"
+import { Stroke, type StudentHome, type StudentProblem } from "@autograder/domain"
+import { Schema } from "effect"
 import { useCallback, useEffect, useState } from "react"
 import { call, friendly } from "../api.ts"
 import { MathText } from "../components/Math.tsx"
 import { navigate } from "../lib/router.ts"
-import { drawingKey, type StudentSession, studentSession } from "../lib/storage.ts"
+import { drafts, drawingKey, type StudentSession, studentSession } from "../lib/storage.ts"
 import { usePoll } from "../lib/usePoll.ts"
 import { renderPng } from "../whiteboard/ink.ts"
 import { Whiteboard } from "../whiteboard/Whiteboard.tsx"
@@ -67,6 +68,7 @@ export function StudentApp() {
         : <ProblemScreen
             key={problem.id}
             token={session.token}
+            studentId={home.studentId}
             problem={problem}
             closed={home.status !== "open"}
             onSubmitted={() => {
@@ -88,22 +90,32 @@ const chipLabel = (p: StudentProblem) =>
   p.submission.state === "teacher_check" ? "teacher" :
   `${p.submission.score}/${p.maxPoints}`
 
-function ProblemScreen(props: { readonly token: string; readonly problem: StudentProblem; readonly closed: boolean; readonly onSubmitted: () => void }) {
+const decodeDraft = (raw: unknown) => {
+  const r = Schema.decodeUnknownOption(Schema.Array(Stroke))(raw)
+  return r._tag === "Some" ? r.value : null
+}
+
+function ProblemScreen(props: { readonly token: string; readonly studentId: string; readonly problem: StudentProblem; readonly closed: boolean; readonly onSubmitted: () => void }) {
   const p = props.problem
-  const [strokes, setStrokes] = useState<ReadonlyArray<Stroke>>([])
+  // Restore unsubmitted work for THIS student and problem (refresh, tab switch).
+  const [initial] = useState(() => drafts.read(props.studentId, p.id, decodeDraft) ?? [])
+  const [strokes, setStrokes] = useState<ReadonlyArray<Stroke>>(initial)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const onChange = useCallback((s: ReadonlyArray<Stroke>) => setStrokes(s), [])
+  const onChange = useCallback((s: ReadonlyArray<Stroke>) => {
+    setStrokes(s)
+    s.length === 0 ? drafts.clear(props.studentId, p.id) : drafts.save(props.studentId, p.id, s)
+  }, [props.studentId, p.id])
 
   const submit = async () => {
     setBusy(true); setError(null)
     const png = await renderPng(strokes)
     // Same key on a retry (double-tap, flaky wifi): the server keeps one submission (P23).
     const r = await call({ student: props.token }, (c) => c.student.submit({
-      payload: { problemId: p.id, idempotencyKey: drawingKey(p.id), strokes, imagePng: png }
+      payload: { problemId: p.id, idempotencyKey: drawingKey(props.studentId, p.id), strokes, imagePng: png }
     }))
     setBusy(false)
-    if (r.ok || r.tag === "AlreadySubmitted") props.onSubmitted()
+    if (r.ok || r.tag === "AlreadySubmitted") { drafts.clear(props.studentId, p.id); props.onSubmitted() }
     else setError(r.tag === "HttpClientError" ? "Couldn't send it. Check your connection and press Submit again. Your drawing is still here." : friendly(r))
   }
 
@@ -114,7 +126,7 @@ function ProblemScreen(props: { readonly token: string; readonly problem: Studen
         <Submitted problem={p} />
       ) : (
         <>
-          <Whiteboard height={360} onChange={onChange} />
+          <Whiteboard height={360} initial={initial} onChange={onChange} />
           <div className="actions">
             <button className="primary big" disabled={strokes.length === 0 || busy || props.closed} onClick={submit}>
               {busy ? "Sending…" : "Submit and continue →"}

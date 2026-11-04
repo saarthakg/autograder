@@ -7,7 +7,6 @@ export type Tool = "pen" | "eraser"
 /**
  * Minimal whiteboard on perfect-freehand (P12): pen, stroke eraser, undo,
  * clear. Strokes are the source of truth; the parent derives the PNG.
- * Phase 3 polishes the UI; this is enough to draw eval fixtures.
  */
 export function Whiteboard(props: {
   /** Fixed width in CSS px; omit to fill the container (Chromebook-first, P11). */
@@ -16,6 +15,8 @@ export function Whiteboard(props: {
   readonly onChange: (strokes: ReadonlyArray<Stroke>) => void
   /** Bump to clear the board from outside (e.g. after saving a fixture). */
   readonly resetKey?: number
+  /** Strokes to start with, e.g. a restored draft. Read once, on mount. */
+  readonly initial?: ReadonlyArray<Stroke>
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const boxRef = useRef<HTMLDivElement | null>(null)
@@ -27,7 +28,7 @@ export function Whiteboard(props: {
     ro.observe(boxRef.current)
     return () => ro.disconnect()
   }, [props.width])
-  const [strokes, setStrokes] = useState<ReadonlyArray<Stroke>>([])
+  const [strokes, setStrokes] = useState<ReadonlyArray<Stroke>>(() => props.initial ?? [])
   const [history, setHistory] = useState<ReadonlyArray<ReadonlyArray<Stroke>>>([])
   const [tool, setTool] = useState<Tool>("pen")
   const drawing = useRef<{ start: number; points: Array<StrokePoint> } | null>(null)
@@ -39,7 +40,11 @@ export function Whiteboard(props: {
     onChange(next)
   }, [strokes, onChange])
 
+  // Clear only when resetKey changes after mount, so an `initial` draft survives the first render.
+  const lastReset = useRef(props.resetKey)
   useEffect(() => {
+    if (lastReset.current === props.resetKey) return
+    lastReset.current = props.resetKey
     setStrokes([]); setHistory([]); onChange([])
   }, [props.resetKey, onChange])
 

@@ -293,6 +293,8 @@ export class StudentProblem extends Schema.Class<StudentProblem>("StudentProblem
 }) {}
 
 export class StudentHome extends Schema.Class<StudentHome>("StudentHome")({
+  /** Scopes per-browser drafts, so a shared Chromebook never shows one student another's work. */
+  studentId: Schema.String,
   assignmentTitle: Schema.String,
   status: AssignmentStatus,
   displayName: Schema.String,

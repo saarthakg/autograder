@@ -79,6 +79,7 @@ const make = Effect.gen(function*() {
       LEFT JOIN rubric gr ON gr.problem_id = s.problem_id AND gr.version = g.rubric_version
       WHERE s.student_id = ${studentId}`
     return new StudentHome({
+      studentId,
       assignmentTitle: me!.title,
       status: me!.status,
       displayName: me!.displayName,
