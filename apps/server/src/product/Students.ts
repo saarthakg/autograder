@@ -1,4 +1,4 @@
-import { AssignmentNotOpen, InvalidRequest, NotFound, Rubric, StudentHome, StudentProblem, type StudentView, Strokes } from "@autograder/domain"
+import { AssignmentNotOpen, InvalidRequest, NameTaken, NotFound, Rubric, StudentHome, StudentProblem, type StudentView, Strokes } from "@autograder/domain"
 import { Context, Effect, Layer, Schema } from "effect"
 import { SqlClient } from "effect/sql"
 import { Submissions } from "../grading/Submissions.ts"
@@ -35,6 +35,11 @@ const make = Effect.gen(function*() {
     const a = rows[0]
     if (a === undefined) return yield* new NotFound({ message: "no class with that code" })
     if (a.status !== "open") return yield* new AssignmentNotOpen({ message: "this assignment isn't open right now" })
+    // Two identical names make indistinguishable report rows, and a student who lost
+    // their device should rejoin, not become a second copy of themselves.
+    const taken = yield* sql<{ displayName: string }>`
+      SELECT display_name AS "displayName" FROM student WHERE assignment_id = ${a.id} AND lower(display_name) = lower(${name}) LIMIT 1`
+    if (taken[0] !== undefined) return yield* new NameTaken({ message: "someone with that name already joined", displayName: taken[0].displayName })
     const token = newSecret()
     // Rejoin codes are unique per assignment; retry the rare collision.
     const student = yield* sql<{ id: string; rejoinCode: string }>`

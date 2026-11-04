@@ -21,7 +21,9 @@ export function Join() {
     setBusy(false)
     if (!r.ok) {
       setError(r.tag === "NotFound" ? (mode === "join" ? "We couldn't find that class code. Check it with your teacher." : "Those codes don't match. Check both with your teacher.")
-        : r.tag === "AssignmentNotOpen" ? "This assignment isn't open right now." : friendly(r))
+        : r.tag === "AssignmentNotOpen" ? "This assignment isn't open right now."
+        : r.tag === "NameTaken" ? `Someone named ${(r.error as { displayName: string }).displayName} already joined. If that's you, use your rejoin code below. If not, add your last initial (like "${name.trim()} K").`
+        : friendly(r))
       return
     }
     studentSession.save({ token: r.value.token, rejoinCode: r.value.rejoinCode, classCode: code.toUpperCase().replace(/[\s-]/g, ""), displayName: r.value.displayName })

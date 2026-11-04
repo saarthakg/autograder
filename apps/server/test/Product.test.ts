@@ -92,6 +92,15 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.strictEqual(stale._tag, "Unauthorized") // old device's token is revoked
       }))
 
+    it.effect("a name already in the class is refused, trimmed and case-insensitive", () =>
+      Effect.gen(function*() {
+        const { anon, assignment } = yield* classroom // "Ada L" already joined
+        const err = yield* anon.public.join({ payload: { classCode: assignment.classCode!, displayName: "  ada   l " } }).pipe(Effect.flip)
+        assert.strictEqual(err._tag, "NameTaken")
+        const ok = yield* anon.public.join({ payload: { classCode: assignment.classCode!, displayName: "Ada K" } })
+        assert.strictEqual(ok.displayName, "Ada K")
+      }))
+
     it.effect("closed assignments refuse joins and submissions", () =>
       Effect.gen(function*() {
         const { anon, teacher, student, assignment } = yield* classroom

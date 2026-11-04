@@ -26,6 +26,13 @@ export class InvalidRequest extends Schema.TaggedError<InvalidRequest>()(
 ) {}
 
 /** The assignment isn't accepting work (draft or closed). */
+/** Someone in this class already uses that name (compared trimmed, case-insensitive). */
+export class NameTaken extends Schema.TaggedError<NameTaken>()(
+  "NameTaken",
+  { message: Schema.String, displayName: Schema.String },
+  { httpApiStatus: 409 }
+) {}
+
 export class AssignmentNotOpen extends Schema.TaggedError<AssignmentNotOpen>()(
   "AssignmentNotOpen",
   { message: Schema.String },
@@ -271,7 +278,7 @@ export class PublicApi extends HttpApiGroup.make("public")
         displayName: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(40))
       }),
       success: Schema.Struct({ token: Schema.String, rejoinCode: Schema.String, displayName: Schema.String }),
-      error: [NotFound, AssignmentNotOpen, InvalidRequest]
+      error: [NotFound, AssignmentNotOpen, InvalidRequest, NameTaken]
     }),
     HttpApiEndpoint.post("rejoin", "/rejoin", {
       payload: Schema.Struct({ classCode: Schema.String, rejoinCode: Schema.String }),
