@@ -521,3 +521,11 @@ Status values:
 - **First bottleneck, measured:** one instance grades about 9.3/s (32 worker slots ÷ ~3.4 s per call), and Cloud Run doesn't scale on queue depth. Testing-day (6.9/s) passes; 14/s fails time-to-grade without losing work. Fixes, in order of cost, are in LOADTEST.md.
 - **Refs:** P22, P24, P28–P33; D-22, D-28
 - **Status:** Accepted
+
+### D-32 ★ Worker slots sized by Little's law: 128
+- **Decision:** `MODEL_CONCURRENCY` 32 → **128** and `MODEL_MAX_IN_FLIGHT` 64 → **128**. The simulator's own provider cap (`SIM_MAX_CONCURRENT`) went 64 → 256, so it never limits the system under test.
+- **Why 128 and not 96:** in flight = rate × latency. 4× testing-day peak (25.8/s) needs ~88 at median latency and ~116 at p95 (4.5 s). 96 would have no tail headroom. Slots wait on the network, so they're cheap: CPU p99 40%, memory 31% at 4×.
+- **Measured on prod:** step 2× went from NO-SHIP (32 running, queue 347, time to grade p95 39.8 s) to SHIP (45 running, queue 3, p95 4.9 s). Step 4× SHIP (90 running, queue 3, p95 4.9 s). Still one instance.
+- **Assumption, stated plainly:** OpenRouter and its upstream providers accept 128 concurrent calls from one key. The canary only proved ~5/s. Next ceiling, predicted: ~37.6 grades/s (128 ÷ 3.4 s). Cloud Run can't see the queue, so the fix after that is scaling workers on queue depth.
+- **Refs:** P24, P28; D-12, D-31
+- **Status:** Accepted (Saarthak asked for 96 or 128, 2026-11-04)
