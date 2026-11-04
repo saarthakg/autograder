@@ -118,13 +118,14 @@ const make = Effect.gen(function*() {
   })
 
   const submit = Effect.fn("Students.submit")(function*(studentId: string, assignmentId: string, input: { problemId: string; idempotencyKey: string; strokes: Strokes; imagePng: Uint8Array }) {
-    const rows = yield* sql<{ status: string }>`
-      SELECT a.status FROM problem p JOIN assignment a ON a.id = p.assignment_id
+    const rows = yield* sql<{ status: string; runId: string | null }>`
+      SELECT a.status, a.run_id AS "runId" FROM problem p JOIN assignment a ON a.id = p.assignment_id
       WHERE p.id::text = ${input.problemId} AND a.id = ${assignmentId}`
     const a = rows[0]
     if (a === undefined) return yield* new NotFound({ message: "problem not found" })
     if (a.status !== "open") return yield* new AssignmentNotOpen({ message: "this assignment is closed" })
-    return yield* submissions.submit({ ...input, studentId })
+    // Load-test assignments carry a run_id; their submissions and jobs inherit it for analysis and cleanup.
+    return yield* submissions.submit({ ...input, studentId, runId: a.runId ?? undefined })
   })
 
   return { join, rejoin, authenticate, home, submit }

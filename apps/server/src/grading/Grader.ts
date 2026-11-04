@@ -5,6 +5,7 @@ import { AppConfig } from "../AppConfig.ts"
 import { BudgetGuard } from "../model/BudgetGuard.ts"
 import { ModelCallLedger, type ModelCallRecord } from "../model/Ledger.ts"
 import { ModelClient, type ModelError, type ModelResponse } from "../model/ModelClient.ts"
+import { SimulatedModel } from "../model/SimulatedModel.ts"
 import { loadPrompt, type PromptTemplate, render } from "./Prompts.ts"
 
 export const GRADE_PROMPT = "grade.v2"
@@ -55,7 +56,8 @@ export class Grader extends Context.Service<Grader, {
     Grader,
     Effect.gen(function*() {
       const config = yield* AppConfig
-      const client = yield* ModelClient
+      const real = yield* ModelClient
+      const simulator = yield* SimulatedModel
       const ledger = yield* ModelCallLedger
       const guard = yield* BudgetGuard
       const prompt: PromptTemplate = yield* loadPrompt(config.promptsDir, GRADE_PROMPT).pipe(Effect.orDie)
@@ -66,6 +68,8 @@ export class Grader extends Context.Service<Grader, {
         const fallbackModels = input.model === undefined ? config.model.gradingFallbackModels : []
         const providerOrder = input.model === undefined ? config.model.gradingProviderOrder : []
         const simulated = input.simulated === true
+        // Load-test assignments never reach a real provider (D-28).
+        const client = simulated ? simulator : real
         const text = render(prompt.user, {
           problem: input.problem.prompt,
           answerKey: input.problem.answerKey ?? "(none given)",
@@ -89,7 +93,8 @@ export class Grader extends Context.Service<Grader, {
               schemaName: "grade",
               jsonSchema: structured.jsonSchema,
               maxTokens: 1500,
-              correction
+              correction,
+              simulate: simulated ? { criterionIds: input.rubric.items.map((i) => i.id), seed: input.submissionId ?? text } : undefined
             }).pipe(
               Effect.tapError((e) =>
                 ledger.record({ ...base, outcome: e.kind, latencyMs: e.latencyMs ?? 0, httpStatus: e.httpStatus, error: e.message })

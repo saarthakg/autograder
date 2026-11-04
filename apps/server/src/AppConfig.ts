@@ -30,6 +30,15 @@ export class AppConfig extends Context.Service<AppConfig, {
     /** Refuse model-spending work once key credit would fall below this (P25). */
     readonly budgetFloorUsd: number
   }
+  /** In-process model simulator for load-test assignments (D-28). */
+  readonly simulation: {
+    readonly latencyMedianMs: number
+    readonly latencySigma: number
+    readonly rate429: number
+    readonly rate5xx: number
+    readonly rateInvalid: number
+    readonly maxConcurrent: number
+  }
   readonly worker: {
     readonly concurrency: number
     readonly maxInFlightGlobal: number
@@ -67,6 +76,16 @@ export class AppConfig extends Context.Service<AppConfig, {
       const maxInFlightGlobal = yield* Config.Int("MODEL_MAX_IN_FLIGHT").pipe(Config.withDefault(64))
       const lease = yield* Config.Duration("JOB_LEASE").pipe(Config.withDefault(Duration.seconds(60)))
       const idlePoll = yield* Config.Duration("WORKER_IDLE_POLL").pipe(Config.withDefault(Duration.minutes(60)))
+      // Defaults fitted to openai/gpt-6-luna in the Phase 2 eval: p50 3.4 s, p95 4.5 s (sigma = ln(4.5/3.4)/1.645).
+      // The canary re-measures the real path; LOADTEST.md compares the two.
+      const simulation = {
+        latencyMedianMs: yield* Config.Int("SIM_LATENCY_MEDIAN_MS").pipe(Config.withDefault(3400)),
+        latencySigma: yield* Config.Finite("SIM_LATENCY_SIGMA").pipe(Config.withDefault(0.17)),
+        rate429: yield* Config.Finite("SIM_RATE_429").pipe(Config.withDefault(0.02)),
+        rate5xx: yield* Config.Finite("SIM_RATE_5XX").pipe(Config.withDefault(0.01)),
+        rateInvalid: yield* Config.Finite("SIM_RATE_INVALID").pipe(Config.withDefault(0.005)),
+        maxConcurrent: yield* Config.Int("SIM_MAX_CONCURRENT").pipe(Config.withDefault(64))
+      }
       const shutdownGrace = yield* Config.Duration("WORKER_SHUTDOWN_GRACE").pipe(
         Config.withDefault(Duration.seconds(8))
       )
@@ -90,6 +109,7 @@ export class AppConfig extends Context.Service<AppConfig, {
           timeout: modelTimeout,
           budgetFloorUsd
         },
+        simulation,
         worker: {
           concurrency,
           maxInFlightGlobal,

@@ -12,6 +12,7 @@ import { Submissions } from "./grading/Submissions.ts"
 import { BudgetGuard } from "./model/BudgetGuard.ts"
 import { ModelCallLedger } from "./model/Ledger.ts"
 import { OpenRouterModelLive } from "./model/ModelClient.ts"
+import { SimulatedModel } from "./model/SimulatedModel.ts"
 import { ApiHandlers } from "./http/Handlers.ts"
 import { AdminAuthLive } from "./http/AdminAuth.ts"
 import { StudentAuthLive, TeacherAuthLive } from "./http/ProductAuth.ts"
@@ -46,13 +47,13 @@ const App = Layer.unwrap(
   })
 )
 
-/** Job kinds the worker runs. Grading uses the real model; simulated assignments arrive in Phase 4. */
+/** Job kinds the worker runs. Grading uses the real model, or the simulator for load-test assignments. */
 const HandlersLive = Layer.effect(
   JobHandlers,
   Effect.map(makeGradeHandler, (grade) => new Map([["echo", echoHandler], ["grade", grade]]))
 ).pipe(Layer.provide(Grader.layer))
 
-const ModelLive = Layer.mergeAll(OpenRouterModelLive, BudgetGuard.layer, ModelCallLedger.layerSql).pipe(
+const ModelLive = Layer.mergeAll(OpenRouterModelLive, SimulatedModel.layer, BudgetGuard.layer, ModelCallLedger.layerSql).pipe(
   Layer.provide(FetchHttpClient.layer)
 )
 

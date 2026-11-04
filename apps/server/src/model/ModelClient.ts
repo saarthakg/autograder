@@ -22,6 +22,8 @@ export interface ModelRequest {
   readonly maxTokens: number
   /** Appended as a follow-up user turn on the one retry after invalid output. */
   readonly correction?: string | undefined
+  /** Read only by the in-process simulator (load tests): the rubric's ids and a per-submission seed. */
+  readonly simulate?: { readonly criterionIds: ReadonlyArray<string>; readonly seed: string } | undefined
 }
 
 export interface ModelResponse {

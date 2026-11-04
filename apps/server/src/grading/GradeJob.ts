@@ -76,10 +76,6 @@ export const makeGradeHandler = Effect.gen(function*() {
       if (sub === undefined) return yield* new JobFailure({ message: `submission ${submissionId} not found`, permanent: true })
       if (sub.status === "graded" || sub.status === "needs_review") return // already terminal: idempotent re-run
       if (sub.image === null) return yield* markNeedsReview(submissionId, "grading_failed")
-      if (sub.simulated) {
-        // The in-process simulator arrives in Phase 4 (D-28); never grade a load-test row with a real model.
-        return yield* new JobFailure({ message: "simulated grading not available yet", permanent: true })
-      }
       const rubric = yield* decodeRubric({ items: sub.items, referenceSolution: sub.referenceSolution }).pipe(
         Effect.mapError((e) => new JobFailure({ message: `stored rubric is invalid: ${e.message}`, permanent: true }))
       )
@@ -90,6 +86,7 @@ export const makeGradeHandler = Effect.gen(function*() {
         rubric,
         imagePng: sub.image,
         purpose: "grade",
+        simulated: sub.simulated,
         submissionId,
         runId: sub.runId ?? undefined
       }).pipe(Effect.result)

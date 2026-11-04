@@ -26,6 +26,7 @@ import { BudgetGuard } from "../../apps/server/src/model/BudgetGuard.ts"
 import { type ModelCallRecord, ModelCallLedger } from "../../apps/server/src/model/Ledger.ts"
 import { fetchCatalog, type ModelInfo, OpenRouterModelLive } from "../../apps/server/src/model/ModelClient.ts"
 import { computeMetrics, gates, type Gold, type Sample } from "./metrics.ts"
+import { SimulatedModel } from "../../apps/server/src/model/SimulatedModel.ts"
 import { listPriceUsd, recommend, summary, usd, wrongCases } from "./report.ts"
 
 const DEFAULT_CHEAP = [
@@ -86,6 +87,7 @@ const EvalConfig = Layer.effect(
         timeout: Duration.seconds(90),
         budgetFloorUsd
       },
+      simulation: { latencyMedianMs: 0, latencySigma: 0, rate429: 0, rate5xx: 0, rateInvalid: 0, maxConcurrent: 1 }, // unused: the eval only grades for real
       worker: {
         concurrency: 1,
         maxInFlightGlobal: 1,
@@ -304,7 +306,7 @@ const main = Effect.gen(function*() {
   yield* program(calls).pipe(Effect.provide(Grader.layer.pipe(Layer.provide(ModelCallLedger.memory(calls)))))
 })
 
-const Live = Layer.mergeAll(OpenRouterModelLive, BudgetGuard.layer).pipe(
+const Live = Layer.mergeAll(OpenRouterModelLive, SimulatedModel.layer, BudgetGuard.layer).pipe(
   Layer.provideMerge(Layer.mergeAll(FetchHttpClient.layer, BunServices.layer)),
   Layer.provideMerge(EvalConfig)
 )

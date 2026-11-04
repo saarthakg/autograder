@@ -6,6 +6,7 @@ import { Grader } from "../src/grading/Grader.ts"
 import { BudgetGuard } from "../src/model/BudgetGuard.ts"
 import { type ModelCallRecord, ModelCallLedger } from "../src/model/Ledger.ts"
 import { ModelClient, ModelError, type ModelRequest } from "../src/model/ModelClient.ts"
+import { SimulatedModel } from "../src/model/SimulatedModel.ts"
 import { testConfig } from "./support/TestConfig.ts"
 
 const rubric = new Rubric({
@@ -56,7 +57,7 @@ const gradeWith = (model: ReturnType<typeof scripted>, blocked = false) =>
         purpose: "grade"
       })
     }).pipe(
-      Effect.provide(Grader.layer.pipe(Layer.provide([model.layer, ModelCallLedger.memory(calls), guard(blocked), testConfig(), BunServices.layer]))),
+      Effect.provide(Grader.layer.pipe(Layer.provide([model.layer, SimulatedModel.layer.pipe(Layer.provide(testConfig())), ModelCallLedger.memory(calls), guard(blocked), testConfig(), BunServices.layer]))),
       Effect.result
     )
     return { result, ledger: yield* Ref.get(calls) }

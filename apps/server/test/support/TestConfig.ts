@@ -28,6 +28,7 @@ export const testConfig = (
         budgetFloorUsd: 5,
         ...model
       },
+      simulation: { latencyMedianMs: 5, latencySigma: 0, rate429: 0, rate5xx: 0, rateInvalid: 0, maxConcurrent: 100 },
       worker: {
         concurrency: 4,
         maxInFlightGlobal: 100,
