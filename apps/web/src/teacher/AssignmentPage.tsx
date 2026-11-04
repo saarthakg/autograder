@@ -226,6 +226,12 @@ function RubricEditor(props: {
           <button className="primary" disabled={!dirty || sum !== p.maxPoints} onClick={save}>{saved && !dirty ? "Saved ✓" : "Save rubric"}</button>
         </span>
       </div>
+      {sum !== p.maxPoints && (
+        <p className="small hint">
+          The criteria must add up to {p.maxPoints} point{p.maxPoints === 1 ? "" : "s"}, the problem's total.
+          {sum > p.maxPoints ? ` Take ${sum - p.maxPoints} off somewhere` : ` Add ${p.maxPoints - sum} somewhere`} to save.
+        </p>
+      )}
       {problems.length > 0 && <ul className="error small">{problems.map((m) => <li key={m}>{m}</li>)}</ul>}
     </section>
   )
