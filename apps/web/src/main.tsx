@@ -9,6 +9,7 @@ import { StudentApp } from "./student/StudentApp.tsx"
 import { AssignmentPage } from "./teacher/AssignmentPage.tsx"
 import { NewAssignment } from "./teacher/NewAssignment.tsx"
 import { TeacherHome } from "./teacher/TeacherHome.tsx"
+import "@fontsource-variable/nunito"
 import "./styles.css"
 
 // Dev-only fixture capture. In a production build DEV is false, so Vite drops the page and its chunk.
