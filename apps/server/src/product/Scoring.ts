@@ -35,7 +35,7 @@ export const effective = (
   return { met, score, overridden: Object.keys(overrides).length > 0 }
 }
 
-export type SubmissionStatus = "queued" | "grading" | "graded" | "needs_review"
+export type SubmissionStatus = "queued" | "grading" | "graded" | "needs_review" | "redo"
 
 /**
  * What a student sees for one submitted problem: a score only when
@@ -44,8 +44,9 @@ export type SubmissionStatus = "queued" | "grading" | "graded" | "needs_review"
 export const studentState = (
   status: SubmissionStatus,
   eff: Effective
-): "grading" | "graded" | "teacher_check" => {
+): "grading" | "graded" | "teacher_check" | "redo" => {
   if (status === "queued" || status === "grading") return "grading"
+  if (status === "redo") return "redo"
   if (status === "graded") return "graded"
   return eff.score !== null ? "graded" : "teacher_check"
 }
@@ -77,6 +78,12 @@ export const reviewRisk = (c: ReviewCandidate): { reason: ReviewQueueReason; ris
   if (c.staleRubric) return { reason: "stale_rubric", risk: 20 }
   return null
 }
+
+/** How a submission shows in the teacher's report and drawer. */
+export const cellStatus = (status: SubmissionStatus, score: number | null): "grading" | "graded" | "needs_review" | "rewriting" =>
+  status === "queued" || status === "grading" ? "grading" :
+  status === "redo" ? "rewriting" :
+  score !== null ? "graded" : "needs_review"
 
 /** Starter rubric when drafting fails: one criterion for the answer; the teacher refines it. */
 export const templateRubric = (answerKey: string | null, maxPoints: number) => ({

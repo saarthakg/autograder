@@ -26,7 +26,7 @@ import { SqlClient } from "effect/sql"
 import { AppConfig } from "../AppConfig.ts"
 import { RubricGenerator } from "../grading/RubricGenerator.ts"
 import { newSecret, shortCode } from "./Codes.ts"
-import { effective, reviewRisk, type StoredVerdict, type SubmissionStatus, templateRubric } from "./Scoring.ts"
+import { cellStatus, effective, reviewRisk, type StoredVerdict, type SubmissionStatus, templateRubric } from "./Scoring.ts"
 
 const decodeRubric = Schema.decodeUnknownSync(Rubric)
 const decodeStrokes = Schema.decodeUnknownSync(Strokes)
@@ -316,7 +316,7 @@ const make = Effect.gen(function*() {
         const s = byKey.get(`${st.id}:${p.id}`)
         if (s === undefined) return new ReportCell({ problemId: p.id, submissionId: null, status: "not_started", score: null, overridden: false, staleRubric: false })
         const { eff, stale } = evaluated.get(s.id)!
-        const status = s.status === "queued" || s.status === "grading" ? "grading" : eff.score !== null ? "graded" : "needs_review"
+        const status = cellStatus(s.status, eff.score)
         return new ReportCell({ problemId: p.id, submissionId: s.id, status, score: eff.score, overridden: eff.overridden, staleRubric: stale })
       })
       return new ReportStudent({
@@ -386,13 +386,13 @@ const make = Effect.gen(function*() {
       studentName: s.studentName,
       problem,
       strokes: decodeStrokes(s.strokes),
-      status: s.status === "queued" || s.status === "grading" ? "grading" : eff.score !== null ? "graded" : "needs_review",
+      status: cellStatus(s.status, eff.score),
       reviewReason: s.reviewReason,
       transcription: s.transcription,
       confidence: s.confidence,
       model: s.model,
       provider: s.provider,
-      usedFallback: s.model !== null && config.model.gradingFallbackModels.includes(s.model),
+      usedFallback: s.model !== null && (config.model.gradingFallbackModels.includes(s.model) || s.model === config.model.escalationModel),
       criteria: rubric.items.map((i) => new CriterionDetail({
         id: i.id,
         label: i.label,

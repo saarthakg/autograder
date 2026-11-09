@@ -108,7 +108,7 @@ const make = Effect.gen(function*() {
           submission: {
             state,
             score: state === "graded" ? eff.score : null,
-            // Task-framed labels; "Not yet" only when the teacher opts in.
+            // Task-framed labels: what the work did, and what isn't there yet (the default view).
             metLabels: view === "score" ? [] : labels(true),
             notYetLabels: view === "met_not_yet" ? labels(false) : []
           }

@@ -25,6 +25,7 @@ describe("studentState (never a made-up score)", () => {
     expect(studentState("queued", effective(items, null, {}))).toBe("grading")
     expect(studentState("graded", effective(items, model, {}))).toBe("graded")
     expect(studentState("needs_review", effective(items, null, {}))).toBe("teacher_check")
+    expect(studentState("redo", effective(items, null, {}))).toBe("redo")
     expect(studentState("needs_review", effective(items, null, { c1: true, c2: true, c3: true }))).toBe("graded")
   })
 })

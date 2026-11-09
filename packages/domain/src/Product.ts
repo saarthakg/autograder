@@ -116,7 +116,8 @@ export class AssignmentDetail extends Schema.Class<AssignmentDetail>("Assignment
   rubricFallbacks: Schema.Array(Schema.String)
 }) {}
 
-export const CellStatus = Schema.Literals(["not_started", "grading", "graded", "needs_review"])
+/** "rewriting": the grader couldn't read the work, so the student was asked to rewrite it. */
+export const CellStatus = Schema.Literals(["not_started", "grading", "graded", "needs_review", "rewriting"])
 
 export class ReportCell extends Schema.Class<ReportCell>("ReportCell")({
   problemId: Schema.String,
@@ -290,7 +291,8 @@ export class PublicApi extends HttpApiGroup.make("public")
   )
 {}
 
-export const StudentSubmissionState = Schema.Literals(["grading", "graded", "teacher_check"])
+/** "redo": the work couldn't be read, and the student is asked to rewrite it more clearly. */
+export const StudentSubmissionState = Schema.Literals(["grading", "graded", "teacher_check", "redo"])
 
 export class StudentProblem extends Schema.Class<StudentProblem>("StudentProblem")({
   id: Schema.String,
@@ -302,7 +304,7 @@ export class StudentProblem extends Schema.Class<StudentProblem>("StudentProblem
     score: Schema.NullOr(Schema.Int),
     /** Labels of met criteria, task-framed. Empty when the teacher shows score only. */
     metLabels: Schema.Array(Schema.String),
-    /** Labels of criteria not met yet; only when the teacher chose "met + Not yet". */
+    /** Labels of criteria not met yet; shown unless the teacher chose a view without them. */
     notYetLabels: Schema.Array(Schema.String)
   }))
 }) {}

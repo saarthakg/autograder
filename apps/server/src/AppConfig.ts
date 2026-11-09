@@ -27,6 +27,8 @@ export class AppConfig extends Context.Service<AppConfig, {
     readonly gradingFallbackModels: ReadonlyArray<string>
     /** OpenRouter `provider.order` for grading calls: the primary's providers, tried in order before a fallback model. */
     readonly gradingProviderOrder: ReadonlyArray<string>
+    /** Stronger model that re-grades work the grading model was unsure about or couldn't read. */
+    readonly escalationModel: string
     readonly rubricModel: string
     readonly timeout: Duration.Duration
     /** Refuse model-spending work once key credit would fall below this. */
@@ -74,6 +76,8 @@ export class AppConfig extends Context.Service<AppConfig, {
       // D-30: the hard set caught gemini-3.1-flash-lite inventing work on an unreadable drawing; sol never did.
       const gradingFallbacks = yield* Config.String("GRADING_FALLBACK_MODELS").pipe(Config.withDefault("openai/gpt-6.1-sol"))
       const providerOrder = yield* Config.String("GRADING_PROVIDER_ORDER").pipe(Config.withDefault("openai,azure"))
+      // The hard set showed sol abstaining correctly on unreadable work where cheaper models invented an answer (D-30).
+      const escalationModel = yield* Config.String("ESCALATION_MODEL").pipe(Config.withDefault("openai/gpt-6.1-sol"))
       const rubricModel = yield* Config.String("RUBRIC_MODEL").pipe(Config.withDefault("openai/gpt-6.1-terra"))
       const modelTimeout = yield* Config.Duration("MODEL_TIMEOUT").pipe(Config.withDefault(Duration.seconds(60)))
       const budgetFloorUsd = yield* Config.Finite("BUDGET_FLOOR_USD").pipe(Config.withDefault(5))
@@ -117,6 +121,7 @@ export class AppConfig extends Context.Service<AppConfig, {
           gradingModel,
           gradingFallbackModels: list(gradingFallbacks),
           gradingProviderOrder: list(providerOrder),
+          escalationModel,
           rubricModel,
           timeout: modelTimeout,
           budgetFloorUsd

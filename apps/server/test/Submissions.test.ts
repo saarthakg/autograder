@@ -15,12 +15,12 @@ import { PNG, resetDb, seedClass, STROKES } from "./support/Seed.ts"
 import { testConfig } from "./support/TestConfig.ts"
 import { TestDb } from "./support/TestDb.ts"
 
-const result = (verdicts: Array<"met" | "not_met">, legible = true): GradeResult => {
+const result = (verdicts: Array<"met" | "not_met">, legible = true, opts: { confidence?: "high" | "low"; model?: string } = {}): GradeResult => {
   const output = new GradeOutput({
     transcription: "3x - 6 = 2x + 5",
     legible,
     criteria: legible ? verdicts.map((v, i) => new CriterionVerdict({ id: `c${i + 1}`, verdict: v, evidence: "l1" })) : [],
-    confidence: "high"
+    confidence: opts.confidence ?? "high"
   })
   const met = new Map(output.criteria.map((c) => [c.id, c.verdict === "met"]))
   const weights = [1, 1, 2]
@@ -29,7 +29,7 @@ const result = (verdicts: Array<"met" | "not_met">, legible = true): GradeResult
     met,
     totalPoints: verdicts.reduce((s, v, i) => s + (legible && v === "met" ? weights[i]! : 0), 0),
     maxPoints: 4,
-    model: "test/grader",
+    model: opts.model ?? "test/grader",
     provider: "TestCo",
     promptVersion: "grade.v1",
     startedAt: new Date(),
@@ -39,13 +39,23 @@ const result = (verdicts: Array<"met" | "not_met">, legible = true): GradeResult
 }
 
 type Outcome = GradeResult | InvalidModelOutput | ModelError
+/** What the grading model returns, and what the stronger escalation model returns. */
 let nextOutcome: Outcome = result(["met", "met", "met"])
+let escalated: Outcome = result(["met", "met", "met"], true, { model: "test/escalation" })
+let escalations = 0
+const ESCALATION_MODEL = "test/escalation"
 const FakeGrader = Layer.succeed(Grader, Grader.of({
-  grade: () => nextOutcome instanceof InvalidModelOutput || nextOutcome instanceof ModelError ? Effect.fail(nextOutcome) : Effect.succeed(nextOutcome)
+  grade: (input) => {
+    const outcome = input.model === ESCALATION_MODEL ? (escalations++, escalated) : nextOutcome
+    return outcome instanceof InvalidModelOutput || outcome instanceof ModelError ? Effect.fail(outcome) : Effect.succeed(outcome)
+  }
 }))
+const setOutcomes = (first: Outcome, second: Outcome = result(["met", "met", "met"], true, { model: ESCALATION_MODEL })) => {
+  nextOutcome = first; escalated = second; escalations = 0
+}
 
 const Base = Layer.mergeAll(Submissions.layer).pipe(
-  Layer.provideMerge(Layer.mergeAll(JobQueue.layer, WakeSignal.layer, Instance.layer, FakeGrader)),
+  Layer.provideMerge(Layer.mergeAll(JobQueue.layer, WakeSignal.layer, Instance.layer, FakeGrader, testConfig())),
   Layer.provideMerge(TestDb)
 )
 
@@ -59,15 +69,15 @@ const gradeToTerminal = (submissionId: string) =>
     const deadline = Date.now() + 5_000
     while (Date.now() < deadline) {
       const [row] = yield* sql<{ status: string }>`SELECT status FROM submission WHERE id = ${submissionId}`
-      if (row && (row.status === "graded" || row.status === "needs_review")) break
+      if (row && ["graded", "needs_review", "redo"].includes(row.status)) break
       yield* Effect.sleep(Duration.millis(25))
     }
     yield* Scope.close(scope, Exit.void)
     const [sub] = yield* sql<{ status: string; reviewReason: string | null; hasImage: boolean; gradedAt: Date | null }>`
       SELECT status, review_reason AS "reviewReason", image IS NOT NULL AS "hasImage", graded_at AS "gradedAt"
       FROM submission WHERE id = ${submissionId}`
-    const grades = yield* sql<{ totalPoints: number; maxPoints: number; modelStartedAt: Date }>`
-      SELECT total_points AS "totalPoints", max_points AS "maxPoints", model_started_at AS "modelStartedAt"
+    const grades = yield* sql<{ totalPoints: number; maxPoints: number; modelStartedAt: Date; model: string }>`
+      SELECT total_points AS "totalPoints", max_points AS "maxPoints", model_started_at AS "modelStartedAt", model
       FROM grade WHERE submission_id = ${submissionId}`
     return { sub: sub!, grades }
   })
@@ -124,7 +134,7 @@ layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (i
   describe("grade job", () => {
     it.effect("grades it: weighted total from code, timestamps set, image purged", () =>
       Effect.gen(function*() {
-        nextOutcome = result(["met", "not_met", "met"])
+        setOutcomes(result(["met", "not_met", "met"]))
         const { res } = yield* submitOne()
         const { sub, grades } = yield* gradeToTerminal(res.id)
         assert.strictEqual(sub.status, "graded")
@@ -133,19 +143,59 @@ layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (i
         assert.strictEqual(grades.length, 1)
         assert.strictEqual(grades[0]!.totalPoints, 3)
         assert.strictEqual(grades[0]!.maxPoints, 4)
+        assert.strictEqual(escalations, 0, "a confident grade is not re-graded")
       }))
 
-    it.effect("an abstention goes to the teacher as illegible, with no score shown", () =>
+    it.effect("a low-confidence grade is re-graded by the stronger model, and its answer is kept", () =>
       Effect.gen(function*() {
-        nextOutcome = result([], false)
+        setOutcomes(result(["met", "met", "met"], true, { confidence: "low" }), result(["met", "not_met", "not_met"], true, { model: ESCALATION_MODEL }))
         const { res } = yield* submitOne()
+        const { sub, grades } = yield* gradeToTerminal(res.id)
+        assert.strictEqual(sub.status, "graded")
+        assert.deepStrictEqual([escalations, grades[0]!.model, grades[0]!.totalPoints], [1, ESCALATION_MODEL, 1])
+      }))
+
+    it.effect("unusable output from the grading model is resolved by the stronger model", () =>
+      Effect.gen(function*() {
+        setOutcomes(new InvalidModelOutput({ message: "bad" }))
+        const { res } = yield* submitOne()
+        const { sub, grades } = yield* gradeToTerminal(res.id)
+        assert.strictEqual(sub.status, "graded")
+        assert.strictEqual(grades[0]!.model, ESCALATION_MODEL)
+      }))
+
+    it.effect("unreadable to both models: the student is asked to rewrite it, and the rewrite is graded", () =>
+      Effect.gen(function*() {
+        setOutcomes(result([], false), result([], false, { model: ESCALATION_MODEL }))
+        const { ids, res } = yield* submitOne()
+        const first = yield* gradeToTerminal(res.id)
+        assert.deepStrictEqual([first.sub.status, first.grades.length, escalations], ["redo", 0, 1])
+
+        // The rewrite reuses the same submission as attempt 2 and is graded normally.
+        setOutcomes(result(["met", "met", "not_met"]))
+        const again = yield* (yield* Submissions).submit({ studentId: ids.studentId, problemId: ids.problemId, idempotencyKey: "rewrite", strokes: STROKES, imagePng: PNG })
+        assert.deepStrictEqual([again.id, again.created], [res.id, true])
+        const second = yield* gradeToTerminal(res.id)
+        assert.strictEqual(second.sub.status, "graded")
+        assert.strictEqual(second.grades[0]!.totalPoints, 2)
+      }))
+
+    it.effect("only a second unreadable attempt reaches the teacher", () =>
+      Effect.gen(function*() {
+        setOutcomes(result([], false), result([], false, { model: ESCALATION_MODEL }))
+        const { ids, res } = yield* submitOne()
+        yield* gradeToTerminal(res.id)
+        yield* (yield* Submissions).submit({ studentId: ids.studentId, problemId: ids.problemId, idempotencyKey: "rewrite", strokes: STROKES, imagePng: PNG })
         const { sub } = yield* gradeToTerminal(res.id)
         assert.deepStrictEqual([sub.status, sub.reviewReason], ["needs_review", "illegible"])
+        // A third submission is refused: it's the teacher's now.
+        const err = yield* (yield* Submissions).submit({ studentId: ids.studentId, problemId: ids.problemId, idempotencyKey: "third", strokes: STROKES, imagePng: PNG }).pipe(Effect.flip)
+        assert.strictEqual(err._tag, "AlreadySubmitted")
       }))
 
-    it.effect("two invalid answers go to the teacher, never a coerced grade", () =>
+    it.effect("when neither model returns usable output, the teacher grades it: never a coerced grade", () =>
       Effect.gen(function*() {
-        nextOutcome = new InvalidModelOutput({ message: "bad" })
+        setOutcomes(new InvalidModelOutput({ message: "bad" }), new InvalidModelOutput({ message: "bad" }))
         const { res } = yield* submitOne()
         const { sub, grades } = yield* gradeToTerminal(res.id)
         assert.deepStrictEqual([sub.status, sub.reviewReason], ["needs_review", "invalid_output"])
@@ -154,7 +204,7 @@ layer(Base, { excludeTestServices: true })("submission path (real Postgres)", (i
 
     it.effect("a non-retryable provider error ends in needs_review via onDead", () =>
       Effect.gen(function*() {
-        nextOutcome = new ModelError({ kind: "credits_exhausted", message: "402" })
+        setOutcomes(new ModelError({ kind: "credits_exhausted", message: "402" }))
         const { res } = yield* submitOne()
         const { sub } = yield* gradeToTerminal(res.id)
         assert.deepStrictEqual([sub.status, sub.reviewReason], ["needs_review", "grading_failed"])

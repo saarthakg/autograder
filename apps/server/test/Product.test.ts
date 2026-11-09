@@ -163,24 +163,24 @@ layer(TestApp, { excludeTestServices: true })("teacher and student product (real
         assert.deepStrictEqual([summary!.gradedCount, summary!.reviewCount], [1, 0])
       }))
 
-    it.effect("the teacher picks what students see: score only, met (default), or met + Not yet", () =>
+    it.effect("by default a student sees what they did and what is not there yet; the teacher can show less", () =>
       Effect.gen(function*() {
         const { teacher, student, assignment } = yield* classroom
         const p1 = assignment.problems[0]!
         const [l1, l2, l3] = p1.rubric.items.map((i) => i.label)
-        assert.strictEqual(assignment.studentView, "met")
+        assert.strictEqual(assignment.studentView, "met_not_yet")
         const accepted = yield* student.student.submit({ payload: { problemId: p1.id, idempotencyKey: "student-view-1", strokes: STROKES, imagePng: PNG } })
         yield* gradeDirectly(accepted.id, [true, false, true])
         const seen = Effect.map(student.student.home(), (h) => h.problems[0]!.submission!)
 
         let sub = yield* seen
-        assert.deepStrictEqual([sub.score, sub.metLabels, sub.notYetLabels], [3, [l1, l3], []])
+        assert.deepStrictEqual([sub.score, sub.metLabels, sub.notYetLabels], [3, [l1, l3], [l2]])
         // Their own work is a separate, one-time fetch: polling stays small (no strokes in home).
         assert.strictEqual((yield* student.student.work({ params: { id: p1.id } })).strokes.length, STROKES.length)
 
-        yield* teacher.teacher.setStudentView({ params: { id: assignment.id }, payload: { studentView: "met_not_yet" } })
+        yield* teacher.teacher.setStudentView({ params: { id: assignment.id }, payload: { studentView: "met" } })
         sub = yield* seen
-        assert.deepStrictEqual([sub.metLabels, sub.notYetLabels], [[l1, l3], [l2]])
+        assert.deepStrictEqual([sub.metLabels, sub.notYetLabels], [[l1, l3], []])
 
         const updated = yield* teacher.teacher.setStudentView({ params: { id: assignment.id }, payload: { studentView: "score" } })
         assert.strictEqual(updated.studentView, "score")

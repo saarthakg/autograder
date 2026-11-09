@@ -24,6 +24,7 @@ export const testConfig = (
         gradingModel: "test/grader",
         gradingFallbackModels: [],
         gradingProviderOrder: [],
+        escalationModel: "test/escalation",
         rubricModel: "test/rubric",
         timeout: Duration.seconds(5),
         budgetFloorUsd: 5,

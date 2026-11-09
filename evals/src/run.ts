@@ -84,6 +84,7 @@ const EvalConfig = Layer.effect(
         gradingModel: DEFAULT_CHEAP[0]!,
         gradingFallbackModels: [],
         gradingProviderOrder: [], // the eval measures each model alone
+        escalationModel: "unused",
         rubricModel: "unused",
         timeout: Duration.seconds(90),
         budgetFloorUsd

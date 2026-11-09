@@ -23,7 +23,9 @@ const isPng = (bytes: Uint8Array) => PNG_MAGIC.every((b, i) => bytes[i] === b)
  * Accept-and-queue: the submission row and its grading job commit
  * in ONE transaction, so an accepted submission can never exist without a job.
  * A retried request with the same idempotency key returns the original
- * submission instead of creating a second one.
+ * submission instead of creating a second one. One attempt per problem, except
+ * when the grader asked for a rewrite ('redo'): then the same row takes the new
+ * drawing as the next attempt and is graded again.
  */
 export class Submissions extends Context.Service<Submissions, {
   readonly submit: (input: SubmitInput) => Effect.Effect<
@@ -46,6 +48,24 @@ export class Submissions extends Context.Service<Submissions, {
         if (input.strokes.length === 0) return yield* new InvalidSubmission({ message: "nothing was drawn" })
 
         const result = yield* sql.withTransaction(Effect.gen(function*() {
+          const [prior] = yield* sql<{ id: string; status: string; attempt: number; idempotencyKey: string }>`
+            SELECT id, status, attempt, idempotency_key AS "idempotencyKey" FROM submission
+            WHERE student_id = ${input.studentId} AND problem_id::text = ${input.problemId}
+            ORDER BY attempt DESC LIMIT 1 FOR UPDATE`
+          if (prior !== undefined && prior.idempotencyKey === input.idempotencyKey) {
+            return { id: prior.id, status: prior.status, created: false }
+          }
+          if (prior !== undefined && prior.status === "redo") {
+            const attempt = prior.attempt + 1
+            yield* sql`
+              UPDATE submission
+              SET strokes = ${JSON.stringify(input.strokes)}::jsonb, image = ${input.imagePng}, idempotency_key = ${input.idempotencyKey},
+                  attempt = ${attempt}, status = 'queued', review_reason = NULL, graded_at = NULL
+              WHERE id = ${prior.id}`
+            yield* queue.enqueue({ kind: "grade", payload: { submissionId: prior.id }, dedupeKey: `grade:${prior.id}:${attempt}`, runId: input.runId })
+            return { id: prior.id, status: "queued", created: true }
+          }
+          if (prior !== undefined) return yield* new AlreadySubmitted({ message: "this problem was already submitted" })
           const inserted = yield* sql<{ id: string; status: string }>`
             INSERT INTO submission (student_id, problem_id, idempotency_key, strokes, image, run_id)
             VALUES (${input.studentId}, ${input.problemId}, ${input.idempotencyKey},
