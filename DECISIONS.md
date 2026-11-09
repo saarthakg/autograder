@@ -5,7 +5,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 ## Headline decisions
 
 ### D-01 ★ A wrong answer still tells the student what to work on
-- **Context:** real-time feedback is off, meaning no tutoring-style hints. But a bare grade lowers interest, while feedback about the task keeps it up (Butler 1987/88), and a student with a wrong answer and no criteria met learns nothing from "0 / 4".
+- **Context:** this is a grader, not a tutor: it scores work and never hints at or reveals the solution. But a bare grade lowers interest, while feedback about the task keeps it up (Butler 1987/88), and a student with a wrong answer and no criteria met learns nothing from "0 / 4".
 - **Choice:** by default, after grading a student sees their score, the criteria they met, and under "Not there yet" the criteria they didn't, as task-framed labels ("Distributes the 3"), in neutral ink, never red. The teacher can show less: score + met, or score only (`student_view`). Students never see the answer, hints or classmates. After submitting, the student sees their own drawing beside "Grading…", which becomes the score in place, and "Next problem →" works immediately.
 - **Why:** naming what is missing points at the step to revisit without solving the problem for them. Nobody waits on the grader.
 
@@ -38,7 +38,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 - **Context:** grading cost is per student per problem, so the model choice sets the unit cost; but a cheap model that grades wrong is worse than useless.
 - **Choice:** five cheap vision models and a strong reference, each graded 20 hand-drawn cases × 3 runs through the production grader. Gates: exact total ≥ 85%, within one point ≥ 95%, false full credit ≤ 3%, false zero ≤ 3%, schema-valid ≥ 99%, flip rate ≤ 5%, p95 ≤ 15 s. Every metric carries a Wilson 95% interval over distinct cases. Pick the cheapest that passes: `openai/gpt-6-luna`, at $0.00023 per grade, about 1/16 of the `gpt-6.1-sol` reference with the same scores.
 - **Why:** gates set before the run can't be fitted to the result. They discriminate: DeepSeek was rejected for empty responses and Qwen3-VL failed 4 gates. At n = 20, every top model's lower bound sits around 83%, so this shows the cheap tier holds up on clean digital ink; it can't rank the top models.
-- **Built on:** uncertain grades are re-graded by the stronger model (see D-06).
+- **Related:** the reference model doubles as the escalation model for uncertain grades (D-06).
 
 ### D-30 ★ The hard set caught the fallback inventing work
 - **Context:** a 3-case hard set (wrong work with the right answer, sloppy but correct work, a truly unreadable scribble), k=3. `gemini-3.1-flash-lite`, the leading fallback candidate, cleared every gate on the main set but "read" `3x - 6 11` from the scribble all three times and awarded 3/4. Luna and sol abstained every time.
@@ -84,7 +84,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 
 **D-05 The teacher sees the assignment before the editors.** A new assignment opens as an overview: each problem with its points and a read-only list of its criteria, and "Edit rubric" opens one editor at a time. A starter template opens ready to fill in. The report answers "what do I do tomorrow?": a live students × problems grid (not started, grading…, score, rewriting ↻, needs review ⚑, teacher-adjusted ✎), class completion, per-problem averages with n, "What the class missed" by criterion, and a review queue ranked by risk.
 
-**D-07 Budget read from the source.** Model credit is a one-time $50, read from OpenRouter's `/key` rather than assumed. The budget guard refuses model-spending jobs below a $5 floor, and eval and canary runs print a projected cost before spending. Total key usage across the project is about $0.27.
+**D-07 Budget read from the source.** The OpenRouter key has a fixed credit balance, read from its `/key` endpoint rather than assumed. The budget guard refuses model-spending jobs below a $5 floor, and eval and canary runs print a projected cost before spending. Total key usage across the project is about $0.27.
 
 **D-08 Rubrics drafted when a problem is saved.** A blocking 3–8 s call to a stronger text model (`openai/gpt-6.1-terra`, under $0.01 per problem), because every grade inherits the rubric. If it fails, the teacher gets an editable starter template.
 

@@ -72,6 +72,19 @@ In order of value:
 - **Plain polling.** Polls answered in p99 73 ms under 4× load, so ETags and push updates (SSE) are not yet needed.
 - **Shared environment.** Load tests run against the same deployment users hit, tagged and cleaned up. Secret Manager, least-privilege IAM and budget alerts are not yet configured.
 
+## Repository layout
+
+| Path | What it is |
+|---|---|
+| `apps/server` | Bun server: HTTP API, Postgres job queue, grading worker, model client, SQL migrations |
+| `apps/web` | React web app: teacher pages, student whiteboard, class report |
+| `packages/domain` | Shared schemas and the typed API contract used by server and web |
+| `prompts` | Versioned grading and rubric prompts |
+| `evals` | Model eval: hand-drawn gold fixtures, metrics, committed results |
+| `loadtest` | Load generator, SLO verdicts, committed reports |
+| `e2e` | Playwright browser tests |
+| `ops` | Optional Cloud Run deploy script |
+
 ## Development
 
 Commands:
