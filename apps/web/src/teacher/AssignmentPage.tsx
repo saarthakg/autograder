@@ -93,7 +93,10 @@ export function AssignmentPage(props: { readonly secret: string; readonly id: st
 
       {a.status === "draft" ? (
         <>
-          <p className="lede">Check each rubric. These are the criteria every answer is scored against. Edit anything, then publish.</p>
+          <p className="lede">
+            {a.problems.length} problem{a.problems.length === 1 ? "" : "s"}, {a.problems.reduce((n, p) => n + p.maxPoints, 0)} points in all.
+            Each answer is scored on the criteria under its problem. Open a rubric to change it, or publish as is.
+          </p>
           {a.rubricFallbacks.length > 0 && (
             <p className="notice">We couldn't draft a rubric for {a.rubricFallbacks.length === 1 ? "one problem" : `${a.rubricFallbacks.length} problems`}, so there's a simple starter. Please fill it in.</p>
           )}
@@ -159,6 +162,8 @@ function RubricEditor(props: {
   const [problems, setProblems] = useState<ReadonlyArray<string>>([])
   const [saved, setSaved] = useState(false)
   const sum = items.reduce((s, i) => s + i.points, 0)
+  // Collapsed to a read-only summary until the teacher asks to edit; a starter template opens ready to fill in.
+  const [editing, setEditing] = useState(p.rubricSource === "template")
   const dirty = JSON.stringify(items) !== JSON.stringify(p.rubric.items.map((i) => ({ label: i.label, description: i.description, points: i.points }))) || ref !== p.rubric.referenceSolution
 
   const update = (i: number, patch: Partial<ItemDraft>) => { setSaved(false); setItems((xs) => xs.map((x, j) => (j === i ? { ...x, ...patch } : x))) }
@@ -188,11 +193,35 @@ function RubricEditor(props: {
   useEffect(() => { onDirty(p.id, dirty) }, [onDirty, p.id, dirty])
   useEffect(() => () => onDirty(p.id, false), [onDirty, p.id])
 
+  const source = p.rubricSource === "sample" ? "Reviewed sample rubric" : p.rubricSource === "generated" ? "Drafted for you" : p.rubricSource === "template" ? "Starter rubric: please fill in" : `Edited (v${p.rubricVersion})`
+
+  if (!editing && !dirty) {
+    return (
+      <section className="rubric-card collapsed">
+        <header className="row-between">
+          <h2>Problem {p.position} <span className="muted small">· {p.maxPoints} pt{p.maxPoints === 1 ? "" : "s"}</span></h2>
+          <span className="row">
+            <span className="muted small">{source}</span>
+            <button onClick={() => setEditing(true)}>Edit rubric</button>
+          </span>
+        </header>
+        <p className="problem-text"><MathText text={p.prompt} /></p>
+        {p.answerKey && <p className="muted small">Answer: {p.answerKey}</p>}
+        <ul className="criteria-summary">
+          {items.map((x, i) => <li key={i}><span>{x.label}</span><span className="muted small">{x.points} pt{x.points === 1 ? "" : "s"}</span></li>)}
+        </ul>
+      </section>
+    )
+  }
+
   return (
     <section className="rubric-card">
       <header className="row-between">
         <h2>Problem {p.position}</h2>
-        <span className="muted small">{p.rubricSource === "sample" ? "Reviewed sample rubric" : p.rubricSource === "generated" ? "Drafted for you: please check" : p.rubricSource === "template" ? "Starter rubric" : `Edited (v${p.rubricVersion})`}</span>
+        <span className="row">
+          <span className="muted small">{source}</span>
+          {!dirty && <button className="link" onClick={() => setEditing(false)}>Done</button>}
+        </span>
       </header>
       <p className="problem-text"><MathText text={p.prompt} /></p>
       {p.answerKey && <p className="muted small">Answer: {p.answerKey}</p>}
@@ -258,7 +287,7 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
   if (report === null) return <p className="muted">Loading the class report…</p>
 
   const submittedCount = report.students.reduce((n, s) => n + s.submitted, 0)
-  const grading = submittedCount - report.graded - report.students.reduce((n, s) => n + s.cells.filter((c) => c.status === "needs_review").length, 0)
+  const grading = submittedCount - report.graded - report.students.reduce((n, s) => n + s.cells.filter((c) => c.status === "needs_review" || c.status === "rewriting").length, 0)
 
   const share = async () => {
     const r = await call(t, (c) => c.teacher.share({ params: { id: props.a.id } }))
@@ -322,7 +351,7 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
                     <td key={c.problemId}>
                       {c.submissionId === null ? <span className="cell empty" aria-label="Not started">·</span> : (
                         <button className={`cell ${c.status} ${c.score === null ? "" : scoreBand(c.score, report.problems[i]?.maxPoints ?? 0)}`} onClick={() => setOpen(c.submissionId)} aria-label={`${s.displayName} problem score`}>
-                          {c.status === "grading" ? "…" : c.status === "needs_review" ? "⚑" : c.score}
+                          {c.status === "grading" ? "…" : c.status === "needs_review" ? "⚑" : c.status === "rewriting" ? <span title="Couldn't be read; the student was asked to rewrite it">↻</span> : c.score}
                           {c.overridden && <span className="mark" title="You adjusted this">✎</span>}
                           {c.staleRubric && <span className="mark" title="Graded with an earlier rubric">↺</span>}
                         </button>
@@ -372,9 +401,9 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
         <label className="field inline">
           <span>After grading, students see</span>
           <select value={props.a.studentView} onChange={(e) => setView(e.target.value as StudentView)}>
+            <option value="met_not_yet">Score, what they did well, and what's not there yet</option>
+            <option value="met">Score and what they did well</option>
             <option value="score">Their score only</option>
-            <option value="met">Score + what they did well</option>
-            <option value="met_not_yet">Score + what they did well + "Not yet"</option>
           </select>
         </label>
         <span className="muted small">Never the answer, and never red ink.</span>
@@ -402,7 +431,7 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
 /** A total isn't final while work is missing or still being scored: say so next to it. */
 function TotalNote(props: { readonly cells: Report["students"][number]["cells"] }) {
   const notDone = props.cells.filter((c) => c.status === "not_started").length
-  const pending = props.cells.filter((c) => c.status === "grading" || c.status === "needs_review").length
+  const pending = props.cells.filter((c) => c.status === "grading" || c.status === "needs_review" || c.status === "rewriting").length
   const parts = [notDone > 0 ? `${notDone} not done` : null, pending > 0 ? `${pending} pending` : null].filter((x) => x !== null)
   return parts.length === 0 ? null : <span className="total-note">{parts.join(" · ")}</span>
 }
@@ -421,7 +450,7 @@ const downloadCsv = (report: Report) => {
   const rows = report.students.map((s) => [
     s.displayName,
     s.rejoinCode,
-    ...s.cells.map((c) => c.score === null ? (c.status === "needs_review" ? "needs review" : "") : String(c.score)),
+    ...s.cells.map((c) => c.score === null ? (c.status === "needs_review" ? "needs review" : c.status === "rewriting" ? "rewriting" : "") : String(c.score)),
     String(s.total),
     String(s.maxPossible)
   ])
@@ -470,14 +499,15 @@ function SubmissionDrawer(props: { readonly secret: string; readonly id: string;
           <>
             <p className="problem-text small"><MathText text={d.problem.prompt} /></p>
             <StrokeView strokes={d.strokes} width={520} height={260} />
-            {d.reviewReason && <p className="notice small">{d.reviewReason === "illegible" ? "The grader couldn't read this confidently. Your call." : "Automatic grading didn't finish. Please grade by hand."}</p>}
+            {d.status === "rewriting" && <p className="notice small">Neither grading model could read this, so the student was asked to rewrite it more clearly. It's graded automatically when they resubmit.</p>}
+            {d.status !== "rewriting" && d.reviewReason && <p className="notice small">{d.reviewReason === "illegible" ? "Still unreadable after a second model and the student's rewrite. Your call." : "Automatic grading didn't finish. Please grade by hand."}</p>}
             {d.transcription && (
               <details open>
                 <summary className="small">What the grader read</summary>
                 <pre className="transcription">{d.transcription}</pre>
               </details>
             )}
-            {d.score === null && d.status !== "grading" && (
+            {d.score === null && d.status !== "grading" && d.status !== "rewriting" && (
               <div className="hand-grade row-between">
                 <span className="small">Set every criterion to finish grading this one ({d.criteria.filter((c) => c.met !== null).length} of {d.criteria.length} set).</span>
                 <span className="row">
@@ -503,7 +533,7 @@ function SubmissionDrawer(props: { readonly secret: string; readonly id: string;
             </ul>
             <p className="score-line">
               Score: <strong>{d.score === null ? "–" : d.score}</strong> / {d.maxPoints}
-              {d.usedFallback && <span className="pill warn" title="The main grading model was unavailable, so a backup model graded this one.">Graded by backup model</span>}
+              {d.usedFallback && <span className="pill warn" title="The main grading model was unsure or unavailable, so the stronger model graded this one.">Graded by the stronger model</span>}
             </p>
             {d.model && (
               <details className="grading-details">
