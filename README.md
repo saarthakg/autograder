@@ -18,12 +18,13 @@ An AI auto-grader for handwritten math. A teacher types a few problems and recei
 
 Each step of the flow, and the product decision behind it. Reasoning and trade-offs are recorded in [`DECISIONS.md`](DECISIONS.md).
 
-1. **Create:** problems as text with `$…$` math, or a one-click sample that makes no model call.
+1. **Create:** problems as text with `$…$` math, or a one-click sample that makes no model call. The assignment opens as an overview of its problems and rubrics; editors open on request.
 2. **Rubric:** a stronger model drafts yes-or-no criteria. The grading model judges each criterion; code adds up the points, so the model never sees them.
 3. **Publish:** a class code, with no accounts. Teachers keep a private link; students receive a rejoin code for other devices.
-4. **Work:** a whiteboard, and one attempt per problem, because this is grading, not practice.
-5. **Score:** submit returns immediately and grading runs on a queue. Students see their score and the criteria they met, never hints.
-6. **Report:** a live grid, the class's most-missed criteria, and a review queue ranked by risk. Unreadable work shows "Your teacher will check this one" instead of a guessed score.
+4. **Work:** a whiteboard that fills the screen, and one attempt per problem, because this is grading, not practice.
+5. **Score:** submit returns immediately and grading runs on a queue. Students see their score, what they did, and what's not there yet; never the answer or hints.
+6. **Resolve:** an unsure, unreadable or malformed grade is re-graded by a stronger model; work still unreadable goes back to the student to rewrite once. Only what's left reaches the teacher.
+7. **Report:** a live grid, the class's most-missed criteria, and a short review queue ranked by risk.
 
 ## Evidence
 
@@ -50,16 +51,15 @@ In order of value:
 
 1. Scale the worker on queue depth instead of HTTP traffic; this is the first change needed at 10k students.
 2. Per-district fair queuing and multi-provider routing for model calls.
-3. A confidence cascade: re-grade low-confidence results with the stronger model.
-4. Re-grade on rubric edit, re-scoring from the stored transcription.
-5. Sync in-progress drafts across devices.
-6. Worksheet PDF or photo upload that becomes problems.
-7. Stroke replay and misconception clustering in the report.
+3. Re-grade on rubric edit, re-scoring from the stored transcription.
+4. Sync in-progress drafts across devices.
+5. Worksheet PDF or photo upload that becomes problems.
+6. Stroke replay and misconception clustering in the report.
 
 ## Known limitations
 
 - **No submit confirmation.** "You get one try per problem" is shown beside the button instead.
-- **No teacher-granted retries.** The schema allows a second attempt; there is no UI for it yet.
+- **No teacher-granted retries.** A second attempt exists only to rewrite unreadable work; there is no UI for a teacher to grant one.
 - **Small gold set.** The eval uses 20 cases on 3 problems plus a 3-case hard set; more cases would tighten the intervals.
 - **Plain polling.** Polls answered in p99 73 ms under 4× load, so ETags and push updates (SSE) are not yet needed.
 - **Shared environment.** Load tests run against production, tagged and cleaned up. Secret Manager, least-privilege IAM and budget alerts are not yet configured.

@@ -4,10 +4,10 @@ The product and engineering calls behind this app, and every choice that adds a 
 
 ## Headline decisions
 
-### D-01 ★ Feedback off still shows what went right
-- **Context:** real-time feedback is off, meaning no tutoring-style hints. But a bare grade lowers interest, while feedback about the task keeps it up (Butler 1987/88), and in a usability review students said they "never see what they missed".
-- **Choice:** the teacher picks what students see in `student_view`: score only; score + the criteria they met (the default); or score + met + "Not yet" for unmet criteria, in neutral ink, never red. Students never see the answer, hints or classmates. After submitting, the student sees their own drawing beside "Grading…", which becomes the score in place, and "Next problem →" works immediately.
-- **Why:** whether naming an unmet criterion counts as a hint is the teacher's classroom call, not the product's. Nobody waits on the grader.
+### D-01 ★ A wrong answer still tells the student what to work on
+- **Context:** real-time feedback is off, meaning no tutoring-style hints. But a bare grade lowers interest, while feedback about the task keeps it up (Butler 1987/88), and a student with a wrong answer and no criteria met learns nothing from "0 / 4".
+- **Choice:** by default, after grading a student sees their score, the criteria they met, and under "Not there yet" the criteria they didn't, as task-framed labels ("Distributes the 3"), in neutral ink, never red. The teacher can show less: score + met, or score only (`student_view`). Students never see the answer, hints or classmates. After submitting, the student sees their own drawing beside "Grading…", which becomes the score in place, and "Next problem →" works immediately.
+- **Why:** naming what is missing points at the step to revisit without solving the problem for them. Nobody waits on the grader.
 
 ### D-04 ★ No accounts: capability links and rejoin codes
 - **Context:** a free growth product lives or dies on the first minute; a signup wall loses teachers, and students on shared Chromebooks can't manage passwords.
@@ -15,10 +15,14 @@ The product and engineering calls behind this app, and every choice that adds a 
 - **Why:** zero friction, with the risk named: anyone holding the teacher link has access.
 - **Deferred:** real accounts and link rotation.
 
-### D-06 ★ Honest when unsure
-- **Context:** the worst error is confident credit nobody checks (see D-30).
-- **Choice:** illegible work, or a grade that fails after retries, gets no score. The student sees "Your teacher will check this one" and the teacher sees it at the top of the review queue. Low-confidence grades are shown and ranked for review. A teacher override updates the student's view. A made-up or default score is never shown.
-- **Why:** holding back every low-confidence score would rest on a confidence signal that can't yet be calibrated: the eval found no grading errors to calibrate against.
+### D-06 ★ Resolve uncertainty before it reaches the teacher
+- **Context:** the worst error is confident credit nobody checks (see D-30), but sending every doubtful answer to the teacher hands back the grading the product exists to remove.
+- **Choice:** uncertainty is resolved in order, and the teacher is the last resort:
+  1. A low-confidence grade, work the model calls unreadable, or output that fails validation twice is re-graded by the stronger model (`ESCALATION_MODEL`, `gpt-6.1-sol`), and its answer is kept.
+  2. Work that is still unreadable goes back to the student: "We couldn't read your work clearly enough to score it. Please write it again, one step per line." The rewrite reuses the same submission as attempt 2 and is graded normally.
+  3. Only a second unreadable attempt, output neither model could produce, or a provider failure after retries reaches the teacher's review queue, and the student sees "Your teacher will check this one".
+  A made-up or default score is never shown. A teacher override updates the student's view.
+- **Why:** the stronger model abstained correctly on the hard set's unreadable scribble where a cheaper one invented work, so escalating is safe; asking the student to rewrite fixes the cause rather than the symptom. Escalation runs only on the uncertain minority, so the blended cost stays near the cheap model's.
 
 ### D-11 ★ Binary criteria; the model judges, code adds up
 - **Context:** model-assigned point totals drift between runs and hide how the score was reached.
@@ -34,7 +38,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 - **Context:** grading cost is per student per problem, so the model choice sets the unit cost; but a cheap model that grades wrong is worse than useless.
 - **Choice:** five cheap vision models and a strong reference, each graded 20 hand-drawn cases × 3 runs through the production grader. Gates: exact total ≥ 85%, within one point ≥ 95%, false full credit ≤ 3%, false zero ≤ 3%, schema-valid ≥ 99%, flip rate ≤ 5%, p95 ≤ 15 s. Every metric carries a Wilson 95% interval over distinct cases. Pick the cheapest that passes: `openai/gpt-6-luna`, at $0.00023 per grade, about 1/16 of the `gpt-6.1-sol` reference with the same scores.
 - **Why:** gates set before the run can't be fitted to the result. They discriminate: DeepSeek was rejected for empty responses and Qwen3-VL failed 4 gates. At n = 20, every top model's lower bound sits around 83%, so this shows the cheap tier holds up on clean digital ink; it can't rank the top models.
-- **Deferred:** a confidence cascade that re-grades low-confidence results with the stronger model (see D-06).
+- **Built on:** uncertain grades are re-graded by the stronger model (see D-06).
 
 ### D-30 ★ The hard set caught the fallback inventing work
 - **Context:** a 3-case hard set (wrong work with the right answer, sloppy but correct work, a truly unreadable scribble), k=3. `gemini-3.1-flash-lite`, the leading fallback candidate, cleared every gate on the main set but "read" `3x - 6 11` from the scribble all three times and awarded 3/4. Luna and sol abstained every time.
@@ -74,11 +78,11 @@ The product and engineering calls behind this app, and every choice that adds a 
 
 ### Product
 
-**D-02 One attempt per problem.** Students redraw freely before submitting; after that they can view the problem but not resubmit. This is grading, not practice, so the score can't be gamed toward the answer, and spend is one call per student per problem. An `attempt` column with unique `(student, problem, attempt)` leaves room for a teacher-granted retry. "You get one try per problem" sits beside the button. *Deferred: a confirmation step before submit.*
+**D-02 One attempt per problem.** Students redraw freely before submitting; after that they can view the problem but not resubmit. This is grading, not practice, so the score can't be gamed toward the answer, and spend is about one call per student per problem. The one exception is work the grader couldn't read: the student rewrites it once, as attempt 2 of the same submission (D-06). "One try per problem" sits beside the button. *Deferred: a confirmation step before submit, and teacher-granted retries.*
 
 **D-03 Problem format.** Text with inline `$…$` math (KaTeX), an optional answer key, 1–10 integer points per problem, 1–10 problems per assignment. *Deferred: upload-and-extract from a photo or PDF, a separate model pipeline with its own eval.*
 
-**D-05 The report answers "what do I do tomorrow?"** A live students × problems grid (not started, grading…, score, needs review ⚑, teacher-adjusted ✎), class completion, per-problem averages with n, "What the class missed" by criterion, and a review queue ranked by risk.
+**D-05 The teacher sees the assignment before the editors.** A new assignment opens as an overview: each problem with its points and a read-only list of its criteria, and "Edit rubric" opens one editor at a time. A starter template opens ready to fill in. The report answers "what do I do tomorrow?": a live students × problems grid (not started, grading…, score, rewriting ↻, needs review ⚑, teacher-adjusted ✎), class completion, per-problem averages with n, "What the class missed" by criterion, and a review queue ranked by risk.
 
 **D-07 Budget read from the source.** Model credit is a one-time $50, read from OpenRouter's `/key` rather than assumed. The budget guard refuses model-spending jobs below a $5 floor, and eval and canary runs print a projected cost before spending. Total key usage across the project is about $0.27.
 
