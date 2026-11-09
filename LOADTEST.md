@@ -1,6 +1,8 @@
 # Load test
 
-## Statement of confidence
+## Summary
+
+Measured on a Cloud Run deployment (one service, 1 vCPU / 512 MiB) with Neon Postgres, over the public internet.
 
 **The deployed system handles at least the load of ~4,800 students working at once (25.8 submits/s), measured on the public URL with no lost work. The next predicted ceiling is ~6,500 students (~37 grades/s).** A testing day of 1,200 students uses about a quarter of that.
 
@@ -11,15 +13,15 @@ The model provider is proven to a lower rate. The real-model canary graded clean
 Each run is one command. Default runs spend $0 on models and clean up after themselves:
 
 ```sh
-bun run loadtest --scenario testing-day --target https://autograder-768677959450.us-east4.run.app
-bun run loadtest --scenario step --scale 4 --target https://autograder-768677959450.us-east4.run.app
+bun run loadtest --scenario testing-day --target http://localhost:3000
+bun run loadtest --scenario step --scale 4 --target https://<your-deployment>
 ```
 
 The CLI reads `ADMIN_TOKEN` from `.env` (or `--admin-token`) and drives the admin endpoints under `/api/admin/loadtest/*` (create tagged classes, read queue metrics, analyze a run, delete it); every one of them requires that token as a Bearer header.
 
 Load-test assignments are graded by an in-process model simulator with latency fitted to the eval (p50 3.4 s, p95 4.5 s) and injected 429s (2%), 5xx (1%) and invalid output (0.5%). Everything else runs for real: HTTP, Postgres, the queue, the worker, retries, backoff and leases. Pass/fail is decided by SLOs fixed in [`loadtest/src/slo.ts`](loadtest/src/slo.ts): zero lost submissions, submit p99 ≤ 500 ms, time to grade p95 ≤ 30 s and p99 ≤ 60 s. A run whose generator lags more than 250 ms p99 is reported as invalid, never as a pass.
 
-## Results (public URL, 2026-11-04)
+## Results (Cloud Run deployment, 2026-11-04)
 
 | Run | Load | Verdict | Result |
 |---|---|---|---|

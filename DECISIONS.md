@@ -10,7 +10,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 - **Why:** naming what is missing points at the step to revisit without solving the problem for them. Nobody waits on the grader.
 
 ### D-04 ★ No accounts: capability links and rejoin codes
-- **Context:** a free growth product lives or dies on the first minute; a signup wall loses teachers, and students on shared Chromebooks can't manage passwords.
+- **Context:** a free tool for teachers lives or dies on the first minute; a signup wall loses teachers, and students on shared Chromebooks can't manage passwords.
 - **Choice:** a teacher gets a private workspace link (`/t#k=<128-bit secret>`), created silently with their first assignment and covering all their assignments. A student joins with class code + name and gets a rejoin code; class code + rejoin code restores them on any device. Secrets live in the URL fragment and travel as `Authorization: Bearer`, so they never reach logs or `Referer`. Only hashes are stored. Codes use an unambiguous alphabet.
 - **Why:** zero friction, with the risk named: anyone holding the teacher link has access.
 - **Deferred:** real accounts and link rotation.
@@ -46,7 +46,7 @@ The product and engineering calls behind this app, and every choice that adds a 
 - **Why:** blended at a 2% fallback rate it's $0.00030 per grade. A full Luna outage costs $0.33 per class on sol; the budget guard stops spending at a $5 floor. Sending every fallback grade to review was rejected: it would bury teachers exactly when a provider is failing on a busy day.
 
 ### D-28 ★ One public service, load-tested where it runs
-- **Context:** the app has to be public, and the load test cheap to re-run against what users actually hit.
+- **Context:** a public deployment should be cheap to run, and its load test cheap to re-run against what users actually hit.
 - **Choice:** one Cloud Run service (`us-east4`, `--no-cpu-throttling`, min 0, max 3, 1 vCPU / 512 MiB) runs the API, web app and grading worker in one process, on Neon Postgres. The load test hits the same public URL with admin-created `simulated` assignments, graded by an in-process simulator with calibrated latency and injected 429/5xx. A 50-call real-model canary calibrates it. What that runtime requires:
   - The worker needs CPU outside requests, hence `--no-cpu-throttling`, and it must stay alive and pick up jobs after a long gap with no traffic (a 5-minute heartbeat log proves it).
   - On SIGTERM (about 10 s on Cloud Run) the worker stops claiming and gives in-flight jobs about 8 s; anything left falls back to its lease.
