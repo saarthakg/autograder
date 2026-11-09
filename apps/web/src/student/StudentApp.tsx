@@ -1,6 +1,6 @@
 import { Stroke, StudentHome, StudentProblem } from "@autograder/domain"
 import { Schema } from "effect"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { call, friendly } from "../api.ts"
 import { MathText } from "../components/Math.tsx"
 import { StrokeView } from "../components/StrokeView.tsx"
@@ -33,7 +33,7 @@ export function StudentApp() {
     const r = await call({ student: session.token }, (c) => c.student.home())
     if (r.ok && !positioned.current) {
       positioned.current = true
-      const open = r.value.problems.findIndex((p) => p.submission === null)
+      const open = r.value.problems.findIndex(needsWork)
       setCurrent(open >= 0 ? open : r.value.problems.length)
     }
     if (r.ok) setHome(r.value)
@@ -49,7 +49,7 @@ export function StudentApp() {
   if (error) return <main className="page"><p className="error">{error}</p></main>
   if (home === null) return <main className="page"><p className="muted">Loading…</p></main>
 
-  const allDone = home.problems.every((p) => p.submission !== null)
+  const allDone = !home.problems.some(needsWork)
   const problem = home.problems[current]
 
   return (
@@ -92,11 +92,11 @@ export function StudentApp() {
             work={work.get(problem.id)}
             onWork={(strokes) => setWork((w) => new Map(w).set(problem.id, strokes))}
             onNext={() => {
-              const next = home.problems.findIndex((p, i) => i > current && p.submission === null)
-              const firstOpen = home.problems.findIndex((p, i) => i !== current && p.submission === null)
+              const next = home.problems.findIndex((p, i) => i > current && needsWork(p))
+              const firstOpen = home.problems.findIndex((p, i) => i !== current && needsWork(p))
               setCurrent(next >= 0 ? next : firstOpen >= 0 ? firstOpen : home.problems.length)
             }}
-            hasNext={home.problems.some((p, i) => i !== current && p.submission === null)}
+            hasNext={home.problems.some((p, i) => i !== current && needsWork(p))}
           />}
     </main>
   )
@@ -107,9 +107,12 @@ const markSubmitted = (h: StudentHome, problemId: string): StudentHome =>
   new StudentHome({
     ...h,
     problems: h.problems.map((p) =>
-      p.id !== problemId || p.submission !== null ? p : new StudentProblem({ ...p, submission: { state: "grading", score: null, metLabels: [], notYetLabels: [] } })
+      p.id !== problemId || !needsWork(p) ? p : new StudentProblem({ ...p, submission: { state: "grading", score: null, metLabels: [], notYetLabels: [] } })
     )
   })
+
+/** Not submitted yet, or sent back to rewrite more clearly. */
+const needsWork = (p: StudentProblem) => p.submission === null || p.submission.state === "redo"
 
 const chipClass = (p: StudentProblem) =>
   p.submission === null ? "todo" :
@@ -119,17 +122,27 @@ const chipLabel = (p: StudentProblem) =>
   p.submission === null ? "to do" :
   p.submission.state === "grading" ? "checking…" :
   p.submission.state === "teacher_check" ? "teacher will check" :
+  p.submission.state === "redo" ? "rewrite it" :
   `${p.submission.score}/${p.maxPoints}`
 
-/** About 60% of the window, never below 360 px: room for multi-line algebra on a tablet. */
-const boardHeight = () => Math.min(900, Math.max(360, Math.round(window.innerHeight * 0.6)))
-const useBoardHeight = () => {
-  const [h, setH] = useState(boardHeight)
-  useEffect(() => {
-    const onResize = () => setH(boardHeight())
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [])
+/** Breathing room below the canvas. */
+const BOARD_MARGIN_PX = 16
+/**
+ * The canvas takes every pixel of the window below its own top edge (wherever
+ * the toolbar wraps to), so a student has room for a full worked solution.
+ * Never below 320 px.
+ */
+const useBoardHeight = (box: React.RefObject<HTMLElement | null>) => {
+  const [h, setH] = useState(480)
+  useLayoutEffect(() => {
+    const measure = () => {
+      const top = box.current?.querySelector("canvas")?.getBoundingClientRect().top ?? 0
+      setH(Math.max(320, Math.floor(window.innerHeight - top - BOARD_MARGIN_PX)))
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [box])
   return h
 }
 
@@ -155,7 +168,9 @@ function ProblemScreen(props: {
   const [strokes, setStrokes] = useState<ReadonlyArray<Stroke>>(initial)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const height = useBoardHeight()
+  const boardBox = useRef<HTMLDivElement | null>(null)
+  const height = useBoardHeight(boardBox)
+  const redo = p.submission?.state === "redo"
   const onChange = useCallback((s: ReadonlyArray<Stroke>) => {
     setStrokes(s)
     s.length === 0 ? drafts.clear(props.studentId, p.id) : drafts.save(props.studentId, p.id, s)
@@ -166,7 +181,8 @@ function ProblemScreen(props: {
     const png = await renderPng(strokes)
     // Same key on a retry (double-tap, flaky wifi): the server keeps one submission.
     const r = await call({ student: props.token }, (c) => c.student.submit({
-      payload: { problemId: p.id, idempotencyKey: drawingKey(props.studentId, p.id), strokes, imagePng: png }
+      // A rewrite is a new drawing, so it gets its own idempotency key.
+      payload: { problemId: p.id, idempotencyKey: drawingKey(props.studentId, redo ? `${p.id}:rewrite` : p.id), strokes, imagePng: png }
     }))
     setBusy(false)
     if (r.ok || r.tag === "AlreadySubmitted") { drafts.clear(props.studentId, p.id); props.onSubmitted(strokes) }
@@ -176,19 +192,32 @@ function ProblemScreen(props: {
   return (
     <section className="problem-screen">
       <h2 className="problem-text"><span className="muted">Problem {p.position}.</span> <MathText text={p.prompt} /></h2>
-      {p.submission !== null ? (
+      {!needsWork(p) ? (
         <Submitted problem={p} onNext={props.onNext} hasNext={props.hasNext} token={props.token} work={props.work} onWork={props.onWork} />
       ) : (
         <>
-          <Whiteboard height={height} initial={initial} onChange={onChange} />
-          <div className="actions">
-            <button className="primary big" disabled={strokes.length === 0 || busy || props.closed} onClick={submit}>
-              {busy ? "Sending…" : "Submit"}
-            </button>
-            <span className="muted small">Show your work. You get one try per problem.</span>
-          </div>
+          {redo && (
+            <p className="redo-notice" role="status">
+              We couldn't read your work clearly enough to score it. Please write it again, one step per line, and submit.
+            </p>
+          )}
           {props.closed && <p className="notice">This assignment is closed.</p>}
           {error && <p className="error" role="alert">{error}</p>}
+          <div ref={boardBox}>
+            <Whiteboard
+              height={height}
+              initial={initial}
+              onChange={onChange}
+              toolbarEnd={
+                <>
+                  <span className="muted small">{redo ? "Write it neatly this time." : "Show your work. One try per problem."}</span>
+                  <button className="primary big" disabled={strokes.length === 0 || busy || props.closed} onClick={submit}>
+                    {busy ? "Sending…" : "Submit"}
+                  </button>
+                </>
+              }
+            />
+          </div>
         </>
       )}
     </section>
@@ -230,7 +259,7 @@ function Submitted(props: {
               <p className="score">{s.score} / {props.problem.maxPoints}</p>
               {s.metLabels.length > 0 && <ul className="met">{s.metLabels.map((l) => <li key={l}>✓ {l}</li>)}</ul>}
               {s.notYetLabels.length > 0 && (
-                <div className="not-yet"><span>Not yet:</span><ul>{s.notYetLabels.map((l) => <li key={l}>{l}</li>)}</ul></div>
+                <div className="not-yet"><span>Not there yet:</span><ul>{s.notYetLabels.map((l) => <li key={l}>{l}</li>)}</ul></div>
               )}
             </>
           )}
@@ -242,7 +271,7 @@ function Submitted(props: {
 }
 
 function Completion(props: { readonly home: StudentHome }) {
-  const left = props.home.problems.filter((p) => p.submission === null)
+  const left = props.home.problems.filter(needsWork)
   if (left.length > 0) {
     return (
       <section className="completion">

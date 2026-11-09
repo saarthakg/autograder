@@ -1,5 +1,5 @@
 import { Stroke, type StrokePoint } from "@autograder/domain"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { hitsStroke, strokePath } from "./ink.ts"
 
 type Tool = "pen" | "eraser"
@@ -17,6 +17,8 @@ export function Whiteboard(props: {
   readonly resetKey?: number
   /** Strokes to start with, e.g. a restored draft. Read once, on mount. */
   readonly initial?: ReadonlyArray<Stroke>
+  /** Extra controls at the right end of the toolbar, e.g. Submit, so the canvas keeps the vertical space. */
+  readonly toolbarEnd?: ReactNode
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const boxRef = useRef<HTMLDivElement | null>(null)
@@ -102,6 +104,7 @@ export function Whiteboard(props: {
         <button aria-pressed={tool === "eraser"} onClick={() => setTool("eraser")}>🧽 Eraser</button>
         <button disabled={history.length === 0} onClick={undo} title="Undo (Ctrl+Z)">↶ Undo</button>
         <button disabled={strokes.length === 0} onClick={() => commit([])}>Clear</button>
+        {props.toolbarEnd !== undefined && <div className="toolbar-end">{props.toolbarEnd}</div>}
       </div>
       <canvas
         ref={canvasRef}

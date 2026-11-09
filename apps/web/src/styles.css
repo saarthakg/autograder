@@ -119,6 +119,10 @@ textarea { resize: vertical; }
 
 /* New assignment / rubric editor */
 .problem-inputs { list-style: none; padding: 0; }
+.criteria-summary { list-style: none; padding: 0; margin: 0.6rem 0 0; display: grid; gap: 0.35rem; }
+.criteria-summary li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0.75rem; background: var(--bg); border-radius: var(--radius-sm); }
+.criteria-summary li::before { content: "✓"; color: var(--heading); font-weight: 900; margin-right: 0.5rem; }
+.criteria-summary li span:first-child { flex: 1; }
 .problem-input, .rubric-card { background: var(--surface); border: 0; border-radius: var(--radius); padding: 1rem; margin: 0.8rem 0; }
 .preview { background: var(--bg); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; }
 .problem-text { font-size: 1.15rem; font-weight: 500; }
@@ -135,6 +139,7 @@ textarea { resize: vertical; }
 .tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); margin-bottom: 1rem; }
 .tabs button { border: none; border-bottom: 3px solid transparent; border-radius: 0; background: none; }
 .tabs button { color: var(--muted); }
+.tabs button:hover:not(:disabled):not([aria-selected="true"]) { border-color: transparent; border-bottom-color: var(--line); color: var(--heading); }
 .tabs button[aria-selected="true"] { border-bottom-color: var(--cta); color: var(--heading); font-weight: 800; }
 
 /* Report */
@@ -190,9 +195,10 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .join .code-input { font-size: 1.4rem; letter-spacing: 0.15em; text-transform: uppercase; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .join .primary { margin-top: 0.4rem; width: 100%; }
 .join .link { margin-top: 1rem; }
-.student { max-width: 64rem; margin: 0 auto; padding: 0.8rem 1rem 2rem; }
+/* Full width: the whiteboard is the student's workspace, so it gets the whole window. */
+.student { margin: 0 auto; padding: 0.6rem 1.5rem 0; }
 .student-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
-.chips { display: flex; gap: 0.5rem; margin: 0.8rem 0; flex-wrap: wrap; }
+.chips { display: flex; gap: 0.5rem; margin: 0.6rem 0; flex-wrap: wrap; }
 .chip { flex-direction: column; min-width: 4.6rem; min-height: 56px; padding: 0.3rem 0.6rem; gap: 0; border-radius: var(--radius); }
 .chip span { font-weight: 900; font-size: 1.1rem; }
 .chip small { color: var(--muted); font-size: 0.75rem; }
@@ -204,7 +210,11 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .problem-screen .whiteboard { width: 100%; display: flex; }
 .whiteboard { display: flex; flex-direction: column; gap: 0.5rem; }
 .whiteboard canvas { border: 2px solid var(--line); border-radius: 20px; background: #fff; cursor: crosshair; }
-.toolbar { display: flex; gap: 0.5rem; }
+.toolbar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.toolbar-end { margin-left: auto; display: flex; gap: 0.9rem; align-items: center; }
+.problem-screen .problem-text { margin: 0.2rem 0 0.6rem; }
+.redo-notice { background: color-mix(in srgb, var(--cta) 22%, var(--surface)); color: var(--ink); border-radius: var(--radius-sm); padding: 0.6rem 0.9rem; margin: 0 0 0.6rem; font-weight: 600; }
+.chip.redo { border-color: var(--cta); }
 .toolbar button[aria-pressed="true"] { background: var(--heading); border-color: var(--heading); color: var(--surface); }
 .submitted { background: var(--surface); border: 0; border-radius: 20px; padding: 1rem 1.2rem; font-size: 1.05rem; }
 .submitted .score { font-size: 2.2rem; font-weight: 900; color: var(--heading); margin: 0; }
@@ -213,8 +223,9 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
 .score-moment .stroke-view { border: 2px solid var(--line); border-radius: var(--radius-sm); max-width: 100%; }
 .score-side { flex: 1 1 14rem; }
 .submitted-label { font-weight: 800; color: var(--heading); margin: 0 0 0.2rem; }
-/* "Not yet" in neutral ink, never red. */
-.not-yet { margin-top: 0.6rem; color: var(--muted); }
+/* "Not yet" in neutral ink, never red: what to look at next time, without the answer. */
+.not-yet { margin-top: 0.8rem; color: var(--ink); }
+.not-yet > span { font-weight: 800; color: var(--heading); }
 .not-yet ul { list-style: none; padding: 0; margin: 0.2rem 0 0; }
 .not-yet li::before { content: "○ "; }
 .hand-grade { background: var(--warn-bg); border-radius: var(--radius); padding: 0.5rem 0.8rem; margin: 0.6rem 0; }
