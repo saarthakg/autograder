@@ -30,7 +30,7 @@ export function Landing() {
   return (
     <main className="landing">
       <section className="hero">
-        <p className="eyebrow">Free from Goblins</p>
+        <p className="eyebrow">Free for teachers</p>
         <h1>Grade a whole class's math in minutes.</h1>
         <p className="lede">
           Students show their work on a whiteboard. Each answer is scored against a rubric you can edit,

@@ -11,8 +11,6 @@ import { scoreBand } from "../lib/score.ts"
 import { renderPng } from "../whiteboard/ink.ts"
 import { Whiteboard } from "../whiteboard/Whiteboard.tsx"
 
-const GOBLINS_URL = "https://goblinsapp.com"
-
 /**
  * The student's assignment. Submit never waits on the grader: it returns
  * at once and "Next problem" works immediately. If the student stays, the
@@ -289,7 +287,6 @@ function Completion(props: { readonly home: StudentHome }) {
           <li key={p.id}>Problem {p.position}: {p.submission?.state === "teacher_check" ? "your teacher will check this one" : chipLabel(p)}</li>
         ))}
       </ul>
-      <a className="button primary big" href={GOBLINS_URL} target="_blank" rel="noreferrer">Keep practicing with Goblins →</a>
     </section>
   )
 }

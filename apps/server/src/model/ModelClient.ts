@@ -208,7 +208,7 @@ export const OpenRouterModelLive = Layer.effect(
       const elapsed = () => Date.now() - started
       const httpRequest = HttpClientRequest.post(`${config.model.baseUrl}/chat/completions`).pipe(
         HttpClientRequest.bearerToken(Redacted.value(config.model.apiKey.value)),
-        HttpClientRequest.setHeader("X-Title", "Goblins Auto-Grader"),
+        HttpClientRequest.setHeader("X-Title", "Autograder"),
         HttpClientRequest.bodyJsonUnsafe(buildBody(request, supported))
       )
       const response = yield* http.execute(httpRequest).pipe(

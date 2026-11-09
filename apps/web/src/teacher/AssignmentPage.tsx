@@ -11,7 +11,6 @@ import { WorkspaceLink } from "./TeacherHome.tsx"
 
 /** Stated assumption behind "time saved": a careful hand-grade of one problem. */
 const MINUTES_PER_SUBMISSION = 1
-const GOBLINS_URL = "https://goblinsapp.com"
 
 export function AssignmentPage(props: { readonly secret: string; readonly id: string }) {
   const [a, setA] = useState<AssignmentDetail | null>(null)
@@ -415,7 +414,6 @@ function ReportView(props: { readonly secret: string; readonly a: AssignmentDeta
           ? <button onClick={() => toggle("close")}>Close assignment</button>
           : <button onClick={() => toggle("publish")}>Reopen</button>}
         <button onClick={share}>Share with a colleague</button>
-        <a className="button primary" href={GOBLINS_URL} target="_blank" rel="noreferrer">Open in Goblins →</a>
       </section>
       {shareUrl && (
         <p className="notice">
